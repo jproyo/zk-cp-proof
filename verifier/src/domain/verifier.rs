@@ -25,9 +25,15 @@ pub struct ChallengeStarted {
 }
 
 #[derive(Debug, Clone, TypedBuilder)]
+pub struct ChallengeStore {
+    pub challenge: Challenge,
+    pub challenge_started: ChallengeStarted,
+}
+
+#[derive(Debug, Clone, TypedBuilder)]
 pub struct ChallengeVerification {
     pub auth_id: AuthId,
-    pub s: BigUint,
+    pub s: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -91,18 +97,36 @@ pub struct Material {
     pub h: BigUint,
 }
 
-trait ChallengeState {}
+pub(crate) trait ChallengeState {}
 impl ChallengeState for Challenge {}
 impl ChallengeState for ChallengeVerificationResult {}
 impl ChallengeState for ChallengeStarted {}
 impl ChallengeState for ChallengeVerification {}
 
-struct ChallengeTransition<S: ChallengeState> {
+pub struct ChallengeTransition<S: ChallengeState> {
     state: S,
 }
 
+impl<S> ChallengeTransition<S>
+where
+    S: ChallengeState,
+{
+    pub fn into_inner(self) -> S {
+        self.state
+    }
+}
+
+impl<S> From<S> for ChallengeTransition<S>
+where
+    S: ChallengeState,
+{
+    fn from(state: S) -> Self {
+        ChallengeTransition { state }
+    }
+}
+
 impl ChallengeTransition<Challenge> {
-    fn change(self) -> ChallengeTransition<ChallengeStarted> {
+    pub fn change(self) -> ChallengeTransition<ChallengeStarted> {
         let mut rng = rand::thread_rng();
         let random_c: u32 = rng.gen();
         ChallengeTransition {
@@ -115,7 +139,7 @@ impl ChallengeTransition<Challenge> {
 }
 
 impl ChallengeTransition<ChallengeVerification> {
-    fn change(
+    pub fn change(
         self,
         register: &Register,
         challenge: &Challenge,
@@ -151,13 +175,13 @@ pub trait MaterialRegistry {
 }
 
 #[async_trait::async_trait]
-pub trait ChallengeStorage {
+pub trait VerifierStorage {
     async fn store_user(&self, register: Register) -> anyhow::Result<()>;
     async fn store_challenge(
         &self,
         auth_id: &AuthId,
-        challenge: Challenge,
-    ) -> anyhow::Result<ChallengeStarted>;
+        challenge: ChallengeStore,
+    ) -> anyhow::Result<()>;
     async fn get_user(&self, user: &User) -> anyhow::Result<Option<Register>>;
-    async fn get_challenge(&self, auth_id: &User) -> anyhow::Result<Option<Challenge>>;
+    async fn get_challenge(&self, auth_id: &AuthId) -> anyhow::Result<Option<ChallengeStore>>;
 }

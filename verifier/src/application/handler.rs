@@ -2,8 +2,8 @@ use async_trait::async_trait;
 use typed_builder::TypedBuilder;
 
 use crate::domain::verifier::{
-    Challenge, ChallengeStarted, ChallengeStorage, ChallengeVerification,
-    ChallengeVerificationResult, MaterialRegistry, Register,
+    Challenge, ChallengeStarted, ChallengeStore, ChallengeTransition, ChallengeVerification,
+    ChallengeVerificationResult, MaterialRegistry, Register, VerifierStorage,
 };
 
 #[async_trait]
@@ -28,7 +28,7 @@ pub struct VerifierApplication<M, S> {
 impl<M, S> VerifierService for VerifierApplication<M, S>
 where
     M: MaterialRegistry + Send + Sync,
-    S: ChallengeStorage + Send + Sync,
+    S: VerifierStorage + Send + Sync,
 {
     async fn register(&self, register: Register) -> anyhow::Result<()> {
         tracing::info!("Registering user: {:?}", register);
@@ -45,20 +45,71 @@ where
     }
 
     async fn create_challenge(&self, challenge: Challenge) -> anyhow::Result<ChallengeStarted> {
+        tracing::info!("Creating challenge: {:?}", challenge);
+        let created = <Challenge as Into<ChallengeTransition<Challenge>>>::into(challenge.clone())
+            .change()
+            .into_inner();
+        tracing::info!("Challenge created: {:?} .... Storing", created);
         self.storage
-            .store_challenge(&challenge.auth_id, challenge)
+            .store_challenge(
+                &created.auth_id,
+                ChallengeStore {
+                    challenge,
+                    challenge_started: created.clone(),
+                },
+            )
             .await
+            .map(|_| created)
     }
 
     async fn verify_challenge(
         &self,
-        challenge: ChallengeVerification,
+        challenge_ver: ChallengeVerification,
     ) -> anyhow::Result<ChallengeVerificationResult> {
-        let material = self.material.query(&challenge.auth_id.user).await?;
-        let challenge = self.storage.load_challenge(&challenge.auth_id).await?;
-        let challenge = challenge.verify(&material, &challenge)?;
-        self.storage
-            .store_challenge(&challenge.auth_id, challenge)
-            .await
+        let challenge = self
+            .storage
+            .get_challenge(&challenge_ver.auth_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Challenge not found"))?;
+        let material = self
+            .material
+            .query(&challenge.challenge.user)
+            .await?
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Material not found for user: {:?}",
+                    challenge.challenge.user
+                )
+            })?;
+        let user = self
+            .storage
+            .get_user(&challenge.challenge.user)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("User not found"))?;
+        let c = challenge.challenge_started.c;
+        let s = challenge_ver.s;
+        let result =
+            <ChallengeVerification as Into<ChallengeTransition<ChallengeVerification>>>::into(
+                challenge_ver,
+            )
+            .change(&user, &challenge.challenge, &material, c, s)
+            .into_inner();
+        Ok(result)
     }
 }
+
+impl<M, S> VerifierApplication<M, S>
+where
+    M: MaterialRegistry,
+    S: VerifierStorage,
+{
+    pub fn new(material: M, storage: S) -> Self {
+        Self { material, storage }
+    }
+}
+
+//impl VerifierApplication<GrpcClientMaterialRegistry, MemStorage> {
+//    pub fn new_default() -> Self {
+//        Self::new(DefaultMaterialGenerator, MemStorage::new())
+//    }
+//}

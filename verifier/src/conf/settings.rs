@@ -2,10 +2,15 @@ use config::{Config, File};
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
+pub struct MaterialServer {
+    pub addresses: Vec<String>,
+}
+
 #[derive(TypedBuilder, Deserialize, Serialize, Clone, Default)]
 pub struct VerifierConfig {
     pub port: u16,
     pub response_timeout_in_secs: u64,
+    pub material: MaterialServer,
 }
 
 #[derive(TypedBuilder)]

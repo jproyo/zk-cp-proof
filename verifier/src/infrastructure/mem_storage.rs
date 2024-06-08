@@ -1,47 +1,42 @@
 use dashmap::DashMap;
 
-use crate::domain::material::{Material, MaterialStorage, User};
+use crate::domain::verifier::{AuthId, ChallengeStore, Register, User, VerifierStorage};
 
 pub(crate) struct MemStorage {
-    pub(crate) materials: DashMap<User, Material>,
+    pub(crate) users: DashMap<User, Register>,
+    pub(crate) challenges: DashMap<AuthId, ChallengeStore>,
 }
 
 impl MemStorage {
     pub(crate) fn new() -> Self {
         Self {
-            materials: DashMap::new(),
+            users: DashMap::new(),
+            challenges: DashMap::new(),
         }
     }
 }
 
 #[async_trait::async_trait]
-impl MaterialStorage for MemStorage {
-    async fn get(&self, user: &User) -> anyhow::Result<Option<Material>> {
-        Ok(self.materials.get(user).map(|m| m.value().clone()))
-    }
-
-    async fn store(&self, user: User, material: Material) -> anyhow::Result<()> {
-        self.materials.insert(user, material);
+impl VerifierStorage for MemStorage {
+    async fn store_user(&self, register: Register) -> anyhow::Result<()> {
+        self.users.insert(register.user.clone(), register);
         Ok(())
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::domain::material::Material;
+    async fn store_challenge(
+        &self,
+        auth_id: &AuthId,
+        challenge: ChallengeStore,
+    ) -> anyhow::Result<()> {
+        self.challenges.insert(auth_id.clone(), challenge);
+        Ok(())
+    }
 
-    #[tokio::test]
-    async fn test_mem_storage() {
-        let storage = MemStorage::new();
-        let user = "test_user".into();
-        let material = Material::builder().g(1u64.into()).h(2u64.into()).build();
+    async fn get_user(&self, user: &User) -> anyhow::Result<Option<Register>> {
+        Ok(self.users.get(user).map(|r| r.value().clone()))
+    }
 
-        let stored_material = storage.get(&user).await.unwrap();
-        assert!(stored_material.is_none());
-
-        storage.store(user.clone(), material.clone()).await.unwrap();
-        let stored_material = storage.get(&user).await.unwrap().unwrap();
-        assert_eq!(material, stored_material);
+    async fn get_challenge(&self, auth_id: &AuthId) -> anyhow::Result<Option<ChallengeStore>> {
+        Ok(self.challenges.get(auth_id).map(|c| c.value().clone()))
     }
 }
