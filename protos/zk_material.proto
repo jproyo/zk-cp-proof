@@ -16,19 +16,12 @@ message MaterialRequest {
 }
 
 message MaterialResponse {
-  string user = 1;
   int64 g = 2;
   int64 h = 3;
 }
 
 message QueryRequest {
   string user = 1;
-}
-
-message QueryResponse {
-  string user = 1;
-  int64 g = 2;
-  int64 h = 3;
 }
 
 service Material {
@@ -50,7 +43,7 @@ service Material {
   //
   // Possible Errors:
   // - NotFound: If the user id does not exist
-  rpc Get(MaterialRequest) returns (MaterialResponse) {}
+  rpc Get(QueryRequest) returns (MaterialResponse) {}
 
 
 }

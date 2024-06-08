@@ -27,8 +27,6 @@ impl ::prost::Name for MaterialRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MaterialResponse {
-    #[prost(string, tag = "1")]
-    pub user: ::prost::alloc::string::String,
     #[prost(int64, tag = "2")]
     pub g: i64,
     #[prost(int64, tag = "3")]
@@ -58,26 +56,6 @@ impl ::prost::Name for QueryRequest {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/zkp_material.QueryRequest".into()
-    }
-}
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct QueryResponse {
-    #[prost(string, tag = "1")]
-    pub user: ::prost::alloc::string::String,
-    #[prost(int64, tag = "2")]
-    pub g: i64,
-    #[prost(int64, tag = "3")]
-    pub h: i64,
-}
-impl ::prost::Name for QueryResponse {
-    const NAME: &'static str = "QueryResponse";
-    const PACKAGE: &'static str = "zkp_material";
-    fn full_name() -> ::prost::alloc::string::String {
-        "zkp_material.QueryResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/zkp_material.QueryResponse".into()
     }
 }
 /// Generated server implementations.
@@ -110,7 +88,7 @@ pub mod material_server {
         /// - NotFound: If the user id does not exist
         async fn get(
             &self,
-            request: tonic::Request<super::MaterialRequest>,
+            request: tonic::Request<super::QueryRequest>,
         ) -> std::result::Result<
             tonic::Response<super::MaterialResponse>,
             tonic::Status,
@@ -242,7 +220,7 @@ pub mod material_server {
                 "/zkp_material.Material/Get" => {
                     #[allow(non_camel_case_types)]
                     struct GetSvc<T: Material>(pub Arc<T>);
-                    impl<T: Material> tonic::server::UnaryService<super::MaterialRequest>
+                    impl<T: Material> tonic::server::UnaryService<super::QueryRequest>
                     for GetSvc<T> {
                         type Response = super::MaterialResponse;
                         type Future = BoxFuture<
@@ -251,7 +229,7 @@ pub mod material_server {
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::MaterialRequest>,
+                            request: tonic::Request<super::QueryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {

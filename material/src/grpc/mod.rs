@@ -2,3 +2,5 @@
 pub mod zkp_material {
     include!("zkp_material.rs");
 }
+
+pub mod server;

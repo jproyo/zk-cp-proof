@@ -1,10 +1,11 @@
-use config::{Config, ConfigError, File};
+use config::{Config, File};
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
 #[derive(TypedBuilder, Deserialize, Serialize, Clone, Default)]
 pub struct MaterialConfig {
     pub port: u16,
+    pub response_timeout_in_secs: u64,
 }
 
 #[derive(TypedBuilder)]
@@ -18,7 +19,7 @@ impl<'a> Settings<'a> {
     /// # Errors
     ///
     /// Returns an error if the configuration cannot be created or deserialized.
-    pub fn init_conf<'de, T: Deserialize<'de>>(&self) -> Result<T, ConfigError> {
+    pub fn init_conf<'de, T: Deserialize<'de>>(&self) -> anyhow::Result<T> {
         let mut s = Config::builder()
             .add_source(File::with_name("config/default").required(cfg!(not(test))))
             .add_source(File::with_name("config/material").required(false))
@@ -56,5 +57,6 @@ mod tests {
             .unwrap();
 
         assert_eq!(conf.port, 50_000);
+        assert_eq!(conf.response_timeout_in_secs, 60);
     }
 }

@@ -27,8 +27,6 @@ impl ::prost::Name for MaterialRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MaterialResponse {
-    #[prost(string, tag = "1")]
-    pub user: ::prost::alloc::string::String,
     #[prost(int64, tag = "2")]
     pub g: i64,
     #[prost(int64, tag = "3")]
@@ -58,26 +56,6 @@ impl ::prost::Name for QueryRequest {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/zkp_material.QueryRequest".into()
-    }
-}
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct QueryResponse {
-    #[prost(string, tag = "1")]
-    pub user: ::prost::alloc::string::String,
-    #[prost(int64, tag = "2")]
-    pub g: i64,
-    #[prost(int64, tag = "3")]
-    pub h: i64,
-}
-impl ::prost::Name for QueryResponse {
-    const NAME: &'static str = "QueryResponse";
-    const PACKAGE: &'static str = "zkp_material";
-    fn full_name() -> ::prost::alloc::string::String {
-        "zkp_material.QueryResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/zkp_material.QueryResponse".into()
     }
 }
 /// Generated client implementations.
@@ -206,7 +184,7 @@ pub mod material_client {
         /// - NotFound: If the user id does not exist
         pub async fn get(
             &mut self,
-            request: impl tonic::IntoRequest<super::MaterialRequest>,
+            request: impl tonic::IntoRequest<super::QueryRequest>,
         ) -> std::result::Result<
             tonic::Response<super::MaterialResponse>,
             tonic::Status,
