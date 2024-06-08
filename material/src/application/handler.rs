@@ -71,3 +71,122 @@ impl MaterialApplication<DefaultMaterialGenerator, MemStorage> {
         Self::new(DefaultMaterialGenerator, MemStorage::new())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_material_application() {
+        let generator = DefaultMaterialGenerator;
+        let storage = MemStorage::new();
+        let application = MaterialApplication::new(generator, storage);
+
+        let user = "test_user".into();
+        let material = application.create_material(&user, None).await.unwrap();
+        assert_eq!(
+            material,
+            application.get_material(&user).await.unwrap().unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_material_application_existing() {
+        let generator = DefaultMaterialGenerator;
+        let storage = MemStorage::new();
+        let application = MaterialApplication::new(generator, storage);
+
+        let user = "test_user".into();
+        let material = application.create_material(&user, None).await.unwrap();
+        assert_eq!(
+            material,
+            application.get_material(&user).await.unwrap().unwrap()
+        );
+
+        let material = application.create_material(&user, None).await.unwrap();
+        assert_eq!(
+            material,
+            application.get_material(&user).await.unwrap().unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_material_application_different_users() {
+        let generator = DefaultMaterialGenerator;
+        let storage = MemStorage::new();
+        let application = MaterialApplication::new(generator, storage);
+
+        let user1 = "test_user1".into();
+        let user2 = "test_user2".into();
+        let material1 = application.create_material(&user1, None).await.unwrap();
+        let material2 = application.create_material(&user2, None).await.unwrap();
+        assert_eq!(
+            material1,
+            application.get_material(&user1).await.unwrap().unwrap()
+        );
+        assert_eq!(
+            material2,
+            application.get_material(&user2).await.unwrap().unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_material_application_different_materials() {
+        let generator = DefaultMaterialGenerator;
+        let storage = MemStorage::new();
+        let application = MaterialApplication::new(generator, storage);
+
+        let user = "test_user".into();
+        let material1 = application.create_material(&user, None).await.unwrap();
+        let material2 = application.create_material(&user, None).await.unwrap();
+        assert_eq!(material1, material2);
+    }
+
+    #[tokio::test]
+    async fn test_material_application_get_non_existent() {
+        let generator = DefaultMaterialGenerator;
+        let storage = MemStorage::new();
+        let application = MaterialApplication::new(generator, storage);
+
+        let user = "test_user".into();
+        let material = application.get_material(&user).await.unwrap();
+        assert!(material.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_material_application_store() {
+        let generator = DefaultMaterialGenerator;
+        let storage = MemStorage::new();
+        let user: User = "test_user".into();
+        let material = Material::builder().g(1u64.into()).h(2u64.into()).build();
+        storage.store(user.clone(), material.clone()).await.unwrap();
+        let application = MaterialApplication::new(generator, storage);
+
+        let stored_material = application.get_material(&user).await.unwrap().unwrap();
+        assert_eq!(material, stored_material);
+    }
+
+    #[tokio::test]
+    async fn test_material_application_store_existing() {
+        let generator = DefaultMaterialGenerator;
+        let storage = MemStorage::new();
+        let user: User = "test_user".into();
+        let material_1 = Material::builder().g(1u64.into()).h(2u64.into()).build();
+        let material_2 = Material::builder().g(3u64.into()).h(4u64.into()).build();
+        storage
+            .store(user.clone(), material_1.clone())
+            .await
+            .unwrap();
+        storage
+            .store(user.clone(), material_2.clone())
+            .await
+            .unwrap();
+        let application = MaterialApplication::new(generator, storage);
+
+        let stored_material = application.get_material(&user).await.unwrap().unwrap();
+        assert_eq!(material_2, stored_material);
+
+        let stored_material = application.get_material(&user).await.unwrap().unwrap();
+        assert_eq!(material_2, stored_material);
+    }
+}
