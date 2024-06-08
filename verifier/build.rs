@@ -6,7 +6,6 @@ fn generate_auth_server() -> Result<(), Box<dyn std::error::Error>> {
         .build_server(true)
         .build_client(false)
         .out_dir("src/grpc")
-        .include_file("mod.rs")
         .compile_with_config(config, auth_files, &["../protos"])?;
     Ok(())
 }
@@ -19,7 +18,6 @@ fn generate_material_client() -> Result<(), Box<dyn std::error::Error>> {
         .build_server(false)
         .build_client(true)
         .out_dir("src/grpc")
-        .include_file("mod.rs")
         .compile_with_config(config, material_files, &["../protos"])?;
     Ok(())
 }

@@ -121,6 +121,13 @@ mod tests {
     }
 
     #[test]
+    fn test_verify_prime() {
+        let q = BigUint::from(23_u64);
+        let result = verify_prime(&q);
+        assert!(result.is_ok());
+    }
+
+    #[test]
     fn test_generate_group() {
         let q = BigUint::from(23_u64);
         let limit = q.to_u128().unwrap();

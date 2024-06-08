@@ -14,7 +14,7 @@ pub trait MaterialService {
 }
 
 #[derive(Debug, Clone, TypedBuilder)]
-pub struct MaterialApplication<G: MaterialGenerator, S: MaterialStorage> {
+pub struct MaterialApplication<G, S> {
     generator: G,
     storage: S,
 }

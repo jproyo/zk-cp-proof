@@ -4,11 +4,37 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+config = { workspace = true }
+dashmap = "5.5.3"
+num-bigint = { workspace = true, features = ["rand"] }
+num-primes = { workspace = true }
+num-traits = { workspace = true }
 prost = { workspace = true }
 prost-types = { workspace = true }
 rand = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+tokio = { workspace = true }
 tonic = { workspace = true }
+tonic-health = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+tracing = { workspace = true, features = ["log"] }
+tracing-subscriber = { workspace = true }
+typed-builder = { workspace = true }
+
+[dependencies.uuid]
+version = "1.8.0"
+features = [
+    "v4",                # Lets you generate random UUIDs
+    "fast-rng",          # Use a faster (but still sufficiently random) RNG
+    "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
+]
 
 [build-dependencies]
 glob = { workspace = true }

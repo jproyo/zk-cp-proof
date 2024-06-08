@@ -6,7 +6,6 @@ fn generate_material_server() -> Result<(), Box<dyn std::error::Error>> {
         .build_server(true)
         .build_client(false)
         .out_dir("src/grpc")
-        .include_file("mod.rs")
         .compile_with_config(config, files, &["../protos"])?;
     Ok(())
 }
