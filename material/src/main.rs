@@ -1,7 +1,8 @@
 use clap::Parser;
 use num_primes::{BigUint, Generator, Verification};
-use num_traits::ToPrimitive;
+use num_traits::{One, ToPrimitive, Zero};
 use rand::Rng;
+use tokio::time::Instant;
 
 #[derive(Parser, Debug)]
 struct Options {
@@ -10,14 +11,21 @@ struct Options {
 }
 
 fn verify_generator(element: &BigUint, order: &BigUint) -> Result<(), Box<dyn std::error::Error>> {
-    let mut powers = vec![element.clone()];
     let two = BigUint::from(2_u64);
     let limit = order.to_u128().ok_or("Order is not a u128")?;
+    let mut last = element.clone();
+    let mut count = 1;
     for _ in 1..limit {
-        powers.push(powers.last().ok_or("No last element")?.modpow(&two, order));
+        last = last.modpow(&two, order);
+        if last.is_one() || last.is_zero() {
+            return Err(format!("Element {} is not a generator", element)
+                .to_string()
+                .into());
+        }
+        count += 1;
     }
-    if powers.len() as u128 != limit {
-        return Err(format!("Element is not a generator or order {}", order)
+    if count != limit {
+        return Err(format!("Element {} is not a generator", element)
             .to_string()
             .into());
     }
@@ -38,14 +46,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let q = options
         .q_prime
         .map(BigUint::from)
-        .unwrap_or(Generator::safe_prime(32));
+        .unwrap_or(Generator::safe_prime(16));
 
     println!("Prime order q: {}", q);
 
     verify_prime(&q)?;
-
-    let mut rng = rand::thread_rng();
     let limit = q.to_u128().ok_or("Order is not a u128")?;
+
+    let current_time = Instant::now();
+
+    let (g, h) = loop {
+        let r = generate_group(&q, limit);
+        if r.is_ok() {
+            break r.unwrap();
+        }
+        if current_time.elapsed().as_secs() > 10 {
+            return Err("Too many attempts".into());
+        }
+    };
+
+    let json = serde_json::json!({
+        "g": g.to_string(),
+        "h": h.to_string(),
+        "q": q.to_string(),
+    });
+    println!("{}", json);
+
+    Ok(())
+}
+
+fn generate_group(
+    q: &BigUint,
+    limit: u128,
+) -> Result<(BigUint, BigUint), Box<dyn std::error::Error>> {
+    let mut rng = rand::thread_rng();
 
     // Generate a random element g in the group
     let g: BigUint = rng.gen_range(2..=limit - 1).into();
@@ -56,15 +90,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Element g: {}", g);
 
     // Ensure g and h are generators of the group
-    verify_generator(&g, &q)?;
-    verify_generator(&h, &q)?;
-
-    let json = serde_json::json!({
-        "g": g.to_string(),
-        "h": h.to_string(),
-        "q": q.to_string(),
-    });
-    println!("{}", json);
-
-    Ok(())
+    verify_generator(&g, q)?;
+    verify_generator(&h, q)?;
+    Ok((g, h))
 }
