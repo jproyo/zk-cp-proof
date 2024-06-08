@@ -2,3 +2,6 @@
 pub mod zkp_auth {
     include!("zkp_auth.rs");
 }
+pub mod zkp_material {
+    include!("zkp_material.rs");
+}
