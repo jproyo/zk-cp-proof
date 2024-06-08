@@ -1,5 +1,5 @@
 fn generate_material_server() -> Result<(), Box<dyn std::error::Error>> {
-    let files = &["../protos/**/zk_material.proto"];
+    let files = &["../protos/zk_material.proto"];
     let mut config = prost_build::Config::new();
     config.enable_type_names();
     tonic_build::configure()
