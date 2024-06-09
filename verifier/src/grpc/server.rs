@@ -6,7 +6,7 @@ use super::zkp_auth::{
 use crate::application::handler::{VerifierApplication, VerifierService};
 use crate::conf::VerifierConfig;
 use crate::domain::verifier::ChallengeVerificationResult;
-use crate::infrastructure::grpc_registry::GrpcRegistryClient;
+use crate::infrastructure::file_params::FileParams;
 use crate::infrastructure::mem_storage::MemStorage;
 use std::sync::Arc;
 use tonic::async_trait;
@@ -17,7 +17,7 @@ pub struct GrpcServer<APP> {
     application: Arc<APP>,
 }
 
-pub(crate) type DefaultApp = VerifierApplication<GrpcRegistryClient, MemStorage>;
+pub(crate) type DefaultApp = VerifierApplication<FileParams, MemStorage>;
 
 impl GrpcServer<DefaultApp> {
     /// Creates a new gRPC server with the given configuration.

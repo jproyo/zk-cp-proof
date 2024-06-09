@@ -2,8 +2,8 @@ use crate::grpc::zkp_auth::{
     AuthenticationAnswerRequest, AuthenticationChallengeRequest, AuthenticationChallengeResponse,
     RegisterRequest,
 };
-use crate::grpc::zkp_material::MaterialResponse;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 use typed_builder::TypedBuilder;
 use uuid::Uuid;
@@ -48,7 +48,7 @@ impl Deref for AuthId {
     }
 }
 
-#[derive(Debug, Clone, Eq, Hash, PartialEq)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub struct User(pub String);
 
 impl From<String> for User {
@@ -71,19 +71,12 @@ impl Deref for User {
     }
 }
 
-#[derive(Debug, Clone, TypedBuilder)]
+#[derive(Debug, Clone, TypedBuilder, Serialize, Deserialize)]
 pub struct Material {
     pub g: i64,
     pub h: i64,
-}
-
-impl From<MaterialResponse> for Material {
-    fn from(resp: MaterialResponse) -> Self {
-        Material {
-            g: resp.g,
-            h: resp.h,
-        }
-    }
+    pub q: i64,
+    pub p: i64,
 }
 
 #[derive(Debug, Clone, TypedBuilder)]
@@ -220,7 +213,6 @@ impl ChallengeTransition<ChallengeVerification> {
         challenge: &ChallengeStore,
         material: &Material,
         s: i32,
-        p: i64,
     ) -> ChallengeTransition<ChallengeVerificationResult> {
         let c = challenge.challenge_started.c;
         let challenge = &challenge.challenge;
@@ -230,6 +222,7 @@ impl ChallengeTransition<ChallengeVerification> {
         let r2 = &challenge.r2;
         let g = &material.g;
         let h = &material.h;
+        let p = &material.p;
         let r1_prime = (g.pow(s as u32) * y1.pow(c as u32)) % p;
         let r2_prime = (h.pow(s as u32) * y2.pow(c as u32)) % p;
         if r1 == &r1_prime && r2 == &r2_prime {
@@ -252,9 +245,8 @@ impl ChallengeTransition<ChallengeVerification> {
     }
 }
 
-#[async_trait::async_trait]
-pub trait MaterialRegistry {
-    async fn query(&self, user: &User) -> anyhow::Result<Option<Material>>;
+pub trait Params {
+    fn query(&self, user: &User) -> anyhow::Result<Option<Material>>;
 }
 
 #[async_trait::async_trait]
@@ -355,7 +347,7 @@ mod tests {
             .challenge_started(challenge_started.clone())
             .build();
 
-        let material = Material::builder().g(g).h(h).build();
+        let material = Material::builder().g(g).h(h).p(p).q(q as i64).build();
 
         let transition = ChallengeTransition::<Challenge>::from(challenge)
             .change()
@@ -370,7 +362,7 @@ mod tests {
             .build();
 
         let transition = ChallengeTransition::<ChallengeVerification>::from(challenge_verification)
-            .change(&register, &challenge_store, &material, s, p)
+            .change(&register, &challenge_store, &material, s)
             .into_inner();
 
         match transition {
@@ -422,7 +414,7 @@ mod tests {
             .challenge_started(challenge_started.clone())
             .build();
 
-        let material = Material::builder().g(g).h(h).build();
+        let material = Material::builder().g(g).h(h).p(p).q((q - 3) as i64).build();
 
         let transition = ChallengeTransition::<Challenge>::from(challenge)
             .change()
@@ -437,7 +429,7 @@ mod tests {
             .build();
 
         let transition = ChallengeTransition::<ChallengeVerification>::from(challenge_verification)
-            .change(&register, &challenge_store, &material, s + 1, p - 2)
+            .change(&register, &challenge_store, &material, s + 1)
             .into_inner();
 
         match transition {

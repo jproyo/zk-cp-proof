@@ -1,9 +1,9 @@
 use crate::conf::VerifierConfig;
 use crate::domain::verifier::{
     Challenge, ChallengeStarted, ChallengeStore, ChallengeTransition, ChallengeVerification,
-    ChallengeVerificationResult, MaterialRegistry, Register, VerifierStorage,
+    ChallengeVerificationResult, Params, Register, VerifierStorage,
 };
-use crate::infrastructure::grpc_registry::GrpcRegistryClient;
+use crate::infrastructure::file_params::FileParams;
 use crate::infrastructure::mem_storage::MemStorage;
 use async_trait::async_trait;
 use typed_builder::TypedBuilder;
@@ -51,19 +51,19 @@ pub trait VerifierService {
 /// Represents a Verifier Application.
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct VerifierApplication<M, S> {
-    material: M,
+    params: M,
     storage: S,
 }
 
 #[async_trait]
 impl<M, S> VerifierService for VerifierApplication<M, S>
 where
-    M: MaterialRegistry + Send + Sync,
+    M: Params + Send + Sync,
     S: VerifierStorage + Send + Sync,
 {
     async fn register(&self, register: Register) -> anyhow::Result<()> {
         tracing::info!("Registering user: {:?}", register);
-        let material = self.material.query(&register.user).await?;
+        let material = self.params.query(&register.user)?;
 
         if material.is_none() {
             return Err(anyhow::anyhow!(
@@ -104,9 +104,8 @@ where
             .await?
             .ok_or_else(|| anyhow::anyhow!("Challenge not found"))?;
         let material = self
-            .material
-            .query(&challenge.challenge.user)
-            .await?
+            .params
+            .query(&challenge.challenge.user)?
             .ok_or_else(|| {
                 anyhow::anyhow!(
                     "Material not found for user: {:?}",
@@ -123,7 +122,7 @@ where
             <ChallengeVerification as Into<ChallengeTransition<ChallengeVerification>>>::into(
                 challenge_ver,
             )
-            .change(&user, &challenge, &material, s, 7)
+            .change(&user, &challenge, &material, s)
             .into_inner();
         Ok(result)
     }
@@ -131,17 +130,17 @@ where
 
 impl<M, S> VerifierApplication<M, S>
 where
-    M: MaterialRegistry,
+    M: Params,
     S: VerifierStorage,
 {
-    pub fn new(material: M, storage: S) -> Self {
-        Self { material, storage }
+    pub fn new(params: M, storage: S) -> Self {
+        Self { params, storage }
     }
 }
 
-impl VerifierApplication<GrpcRegistryClient, MemStorage> {
+impl VerifierApplication<FileParams, MemStorage> {
     pub fn new_with_config(conf: &VerifierConfig) -> anyhow::Result<Self> {
-        let material = GrpcRegistryClient::new(conf)?;
+        let material = FileParams::new(conf)?;
         Ok(Self::new(material, MemStorage::new()))
     }
 }
