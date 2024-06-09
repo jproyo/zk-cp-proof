@@ -27,10 +27,10 @@ impl ::prost::Name for MaterialRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MaterialResponse {
-    #[prost(int64, tag = "2")]
-    pub g: i64,
-    #[prost(int64, tag = "3")]
-    pub h: i64,
+    #[prost(uint64, tag = "2")]
+    pub g: u64,
+    #[prost(uint64, tag = "3")]
+    pub h: u64,
 }
 impl ::prost::Name for MaterialResponse {
     const NAME: &'static str = "MaterialResponse";

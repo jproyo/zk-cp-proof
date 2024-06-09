@@ -1,10 +1,13 @@
 use async_trait::async_trait;
 use typed_builder::TypedBuilder;
 
+use crate::conf::VerifierConfig;
 use crate::domain::verifier::{
     Challenge, ChallengeStarted, ChallengeStore, ChallengeTransition, ChallengeVerification,
     ChallengeVerificationResult, MaterialRegistry, Register, VerifierStorage,
 };
+use crate::infrastructure::grpc_registry::GrpcRegistryClient;
+use crate::infrastructure::mem_storage::MemStorage;
 
 #[async_trait]
 pub trait VerifierService {
@@ -66,6 +69,7 @@ where
         &self,
         challenge_ver: ChallengeVerification,
     ) -> anyhow::Result<ChallengeVerificationResult> {
+        tracing::info!("Verifying challenge: {:?}", challenge_ver);
         let challenge = self
             .storage
             .get_challenge(&challenge_ver.auth_id)
@@ -86,13 +90,12 @@ where
             .get_user(&challenge.challenge.user)
             .await?
             .ok_or_else(|| anyhow::anyhow!("User not found"))?;
-        let c = challenge.challenge_started.c;
         let s = challenge_ver.s;
         let result =
             <ChallengeVerification as Into<ChallengeTransition<ChallengeVerification>>>::into(
                 challenge_ver,
             )
-            .change(&user, &challenge.challenge, &material, c, s)
+            .change(&user, &challenge, &material, s)
             .into_inner();
         Ok(result)
     }
@@ -108,8 +111,9 @@ where
     }
 }
 
-//impl VerifierApplication<GrpcClientMaterialRegistry, MemStorage> {
-//    pub fn new_default() -> Self {
-//        Self::new(DefaultMaterialGenerator, MemStorage::new())
-//    }
-//}
+impl VerifierApplication<GrpcRegistryClient, MemStorage> {
+    pub fn new_with_config(conf: &VerifierConfig) -> anyhow::Result<Self> {
+        let material = GrpcRegistryClient::new(conf)?;
+        Ok(Self::new(material, MemStorage::new()))
+    }
+}

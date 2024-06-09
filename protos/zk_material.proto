@@ -16,8 +16,8 @@ message MaterialRequest {
 }
 
 message MaterialResponse {
-  int64 g = 2;
-  int64 h = 3;
+  uint64 g = 2;
+  uint64 h = 3;
 }
 
 message QueryRequest {

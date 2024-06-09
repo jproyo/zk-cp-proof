@@ -2,6 +2,7 @@ use config::{Config, File};
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
+#[derive(TypedBuilder, Deserialize, Serialize, Clone, Default)]
 pub struct MaterialServer {
     pub addresses: Vec<String>,
 }

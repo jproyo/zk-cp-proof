@@ -4,10 +4,10 @@
 pub struct RegisterRequest {
     #[prost(string, tag = "1")]
     pub user: ::prost::alloc::string::String,
-    #[prost(int64, tag = "2")]
-    pub y1: i64,
-    #[prost(int64, tag = "3")]
-    pub y2: i64,
+    #[prost(uint64, tag = "2")]
+    pub y1: u64,
+    #[prost(uint64, tag = "3")]
+    pub y2: u64,
 }
 impl ::prost::Name for RegisterRequest {
     const NAME: &'static str = "RegisterRequest";
@@ -37,10 +37,10 @@ impl ::prost::Name for RegisterResponse {
 pub struct AuthenticationChallengeRequest {
     #[prost(string, tag = "1")]
     pub user: ::prost::alloc::string::String,
-    #[prost(int64, tag = "2")]
-    pub r1: i64,
-    #[prost(int64, tag = "3")]
-    pub r2: i64,
+    #[prost(uint64, tag = "2")]
+    pub r1: u64,
+    #[prost(uint64, tag = "3")]
+    pub r2: u64,
 }
 impl ::prost::Name for AuthenticationChallengeRequest {
     const NAME: &'static str = "AuthenticationChallengeRequest";
@@ -57,8 +57,8 @@ impl ::prost::Name for AuthenticationChallengeRequest {
 pub struct AuthenticationChallengeResponse {
     #[prost(string, tag = "1")]
     pub auth_id: ::prost::alloc::string::String,
-    #[prost(int64, tag = "2")]
-    pub c: i64,
+    #[prost(uint32, tag = "2")]
+    pub c: u32,
 }
 impl ::prost::Name for AuthenticationChallengeResponse {
     const NAME: &'static str = "AuthenticationChallengeResponse";
@@ -75,8 +75,8 @@ impl ::prost::Name for AuthenticationChallengeResponse {
 pub struct AuthenticationAnswerRequest {
     #[prost(string, tag = "1")]
     pub auth_id: ::prost::alloc::string::String,
-    #[prost(int64, tag = "2")]
-    pub s: i64,
+    #[prost(uint32, tag = "2")]
+    pub s: u32,
 }
 impl ::prost::Name for AuthenticationAnswerRequest {
     const NAME: &'static str = "AuthenticationAnswerRequest";

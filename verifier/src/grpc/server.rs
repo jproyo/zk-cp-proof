@@ -1,8 +1,12 @@
-use super::zkp_material::material_server::{Material, MaterialServer};
-use super::zkp_material::{self, MaterialRequest, MaterialResponse};
-use crate::application::handler::{MaterialApplication, MaterialService};
-use crate::conf::MaterialConfig;
-use crate::infrastructure::generator::DefaultMaterialGenerator;
+use super::zkp_auth::auth_server::{Auth, AuthServer};
+use super::zkp_auth::{
+    AuthenticationAnswerRequest, AuthenticationAnswerResponse, AuthenticationChallengeRequest,
+    AuthenticationChallengeResponse, RegisterRequest, RegisterResponse,
+};
+use crate::application::handler::{VerifierApplication, VerifierService};
+use crate::conf::VerifierConfig;
+use crate::domain::verifier::ChallengeVerificationResult;
+use crate::infrastructure::grpc_registry::GrpcRegistryClient;
 use crate::infrastructure::mem_storage::MemStorage;
 use std::sync::Arc;
 use tonic::async_trait;
@@ -13,74 +17,88 @@ pub struct GrpcServer<APP> {
     application: Arc<APP>,
 }
 
-pub(crate) type DefaultApp = MaterialApplication<DefaultMaterialGenerator, MemStorage>;
+pub(crate) type DefaultApp = VerifierApplication<GrpcRegistryClient, MemStorage>;
 
 impl GrpcServer<DefaultApp> {
-    pub fn new_server() -> MaterialServer<impl Material> {
-        MaterialServer::new(GrpcServer {
-            application: Arc::new(DefaultApp::new_default()),
-        })
+    pub fn new_server(conf: &VerifierConfig) -> anyhow::Result<AuthServer<impl Auth>> {
+        let app = DefaultApp::new_with_config(conf)?;
+        Ok(AuthServer::new(GrpcServer {
+            application: Arc::new(app),
+        }))
     }
 }
 
 #[async_trait]
-impl<APP> Material for GrpcServer<APP>
+impl<APP> Auth for GrpcServer<APP>
 where
-    APP: MaterialService + Send + Sync + 'static,
+    APP: VerifierService + Send + Sync + 'static,
 {
-    async fn generate(
+    async fn register(
         &self,
-        request: tonic::Request<MaterialRequest>,
-    ) -> Result<tonic::Response<MaterialResponse>, tonic::Status> {
-        let req = request.into_inner();
-        let user = req.user.into();
-        let q = req.q.map(|q| (q as u64).into());
-        let material = self
-            .application
-            .create_material(&user, q)
-            .await
-            .map_err(|e| {
-                tracing::error!("Error generating material: {:?}", e);
-                tonic::Status::invalid_argument(format!("Error generating material {}", e))
-            })?;
-        let resp = material.try_into().map_err(|e| {
-            tracing::error!("Error converting material: {:?}", e);
-            tonic::Status::internal("Error converting material")
+        request: tonic::Request<RegisterRequest>,
+    ) -> Result<tonic::Response<RegisterResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let register = request.into();
+        self.application.register(register).await.map_err(|e| {
+            tonic::Status::internal(format!("Error registering user: {:?}", e.to_string()))
         })?;
-        Ok(tonic::Response::new(resp))
+        Ok(tonic::Response::new(RegisterResponse {}))
     }
 
-    async fn get(
+    async fn create_authentication_challenge(
         &self,
-        request: tonic::Request<zkp_material::QueryRequest>,
-    ) -> Result<tonic::Response<zkp_material::MaterialResponse>, tonic::Status> {
-        let user = request.into_inner().user.into();
-        let material = self.application.get_material(&user).await.map_err(|e| {
-            tracing::error!("Error getting material: {:?}", e);
-            tonic::Status::internal("Error getting material")
-        })?;
-        let resp = material
-            .map(|m| {
-                m.try_into().map_err(|e| {
-                    tracing::error!("Error converting material: {:?}", e);
-                    tonic::Status::internal("Error converting material")
-                })
-            })
-            .transpose()?;
-        if let Some(resp) = resp {
-            return Ok(tonic::Response::new(resp));
-        } else {
-            return Err(tonic::Status::not_found("Material not found"));
+        request: tonic::Request<AuthenticationChallengeRequest>,
+    ) -> Result<tonic::Response<AuthenticationChallengeResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let challenge = request.into();
+        let challenge_started =
+            self.application
+                .create_challenge(challenge)
+                .await
+                .map_err(|e| {
+                    tonic::Status::internal(format!(
+                        "Error creating authentication challenge: {:?}",
+                        e.to_string()
+                    ))
+                })?;
+        Ok(tonic::Response::new(challenge_started.into()))
+    }
+
+    async fn verify_authentication(
+        &self,
+        request: tonic::Request<AuthenticationAnswerRequest>,
+    ) -> Result<tonic::Response<AuthenticationAnswerResponse>, tonic::Status> {
+        let request = request.into_inner();
+        let challenge = request.into();
+        let challenge_verification =
+            self.application
+                .verify_challenge(challenge)
+                .await
+                .map_err(|e| {
+                    tonic::Status::internal(format!(
+                        "Error verifying authentication: {:?}",
+                        e.to_string()
+                    ))
+                })?;
+        match challenge_verification {
+            ChallengeVerificationResult::ChallengeVerified(session_id) => {
+                Ok(tonic::Response::new(AuthenticationAnswerResponse {
+                    session_id: session_id.0,
+                }))
+            }
+            ChallengeVerificationResult::ChallengeVerificationFailed => Err(
+                tonic::Status::invalid_argument("Challenge verification failed"),
+            ),
         }
     }
 }
 
-pub async fn run(settings: &MaterialConfig) -> anyhow::Result<()> {
-    let material_server = GrpcServer::new_server();
+pub async fn run(settings: &VerifierConfig) -> anyhow::Result<()> {
+    let material_server = GrpcServer::new_server(settings)?;
 
     let (mut health_reporter, health_service) = tonic_health::server::health_reporter();
     health_reporter
-        .set_serving::<MaterialServer<GrpcServer<DefaultApp>>>()
+        .set_serving::<AuthServer<GrpcServer<DefaultApp>>>()
         .await;
 
     let timeout = tokio::time::Duration::from_secs(settings.response_timeout_in_secs);

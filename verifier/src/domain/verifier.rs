@@ -4,11 +4,27 @@ use std::ops::Deref;
 use typed_builder::TypedBuilder;
 use uuid::Uuid;
 
+use crate::grpc::zkp_auth::{
+    AuthenticationAnswerRequest, AuthenticationChallengeRequest, AuthenticationChallengeResponse,
+    RegisterRequest,
+};
+use crate::grpc::zkp_material::MaterialResponse;
+
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct Register {
     pub user: User,
     pub y1: BigUint,
     pub y2: BigUint,
+}
+
+impl From<RegisterRequest> for Register {
+    fn from(req: RegisterRequest) -> Self {
+        Register {
+            user: req.user.into(),
+            y1: BigUint::from(req.y1 as u64),
+            y2: BigUint::from(req.y2 as u64),
+        }
+    }
 }
 
 #[derive(Debug, Clone, TypedBuilder)]
@@ -18,10 +34,29 @@ pub struct Challenge {
     pub r2: BigUint,
 }
 
+impl From<AuthenticationChallengeRequest> for Challenge {
+    fn from(req: AuthenticationChallengeRequest) -> Self {
+        Challenge {
+            user: req.user.into(),
+            r1: BigUint::from(req.r1 as u64),
+            r2: BigUint::from(req.r2 as u64),
+        }
+    }
+}
+
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct ChallengeStarted {
     pub auth_id: AuthId,
     pub c: u32,
+}
+
+impl From<ChallengeStarted> for AuthenticationChallengeResponse {
+    fn from(resp: ChallengeStarted) -> Self {
+        AuthenticationChallengeResponse {
+            auth_id: resp.auth_id.to_string(),
+            c: resp.c,
+        }
+    }
 }
 
 #[derive(Debug, Clone, TypedBuilder)]
@@ -34,6 +69,15 @@ pub struct ChallengeStore {
 pub struct ChallengeVerification {
     pub auth_id: AuthId,
     pub s: u32,
+}
+
+impl From<AuthenticationAnswerRequest> for ChallengeVerification {
+    fn from(req: AuthenticationAnswerRequest) -> Self {
+        ChallengeVerification {
+            auth_id: req.auth_id.into(),
+            s: req.s,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -97,6 +141,15 @@ pub struct Material {
     pub h: BigUint,
 }
 
+impl From<MaterialResponse> for Material {
+    fn from(resp: MaterialResponse) -> Self {
+        Material {
+            g: BigUint::from(resp.g),
+            h: BigUint::from(resp.h),
+        }
+    }
+}
+
 pub(crate) trait ChallengeState {}
 impl ChallengeState for Challenge {}
 impl ChallengeState for ChallengeVerificationResult {}
@@ -142,11 +195,12 @@ impl ChallengeTransition<ChallengeVerification> {
     pub fn change(
         self,
         register: &Register,
-        challenge: &Challenge,
+        challenge: &ChallengeStore,
         material: &Material,
-        c: u32,
         s: u32,
     ) -> ChallengeTransition<ChallengeVerificationResult> {
+        let c = challenge.challenge_started.c;
+        let challenge = &challenge.challenge;
         let y1 = &register.y1;
         let y2 = &register.y2;
         let r1 = &challenge.r1;
@@ -156,12 +210,18 @@ impl ChallengeTransition<ChallengeVerification> {
         let r1_prime = g.pow(s) * y1.pow(c);
         let r2_prime = h.pow(s) * y2.pow(c);
         if r1 == &r1_prime && r2 == &r2_prime {
+            tracing::info!("Challenge verified successfully");
             ChallengeTransition {
                 state: ChallengeVerificationResult::ChallengeVerified(SessionId(
                     Uuid::new_v4().to_string(),
                 )),
             }
         } else {
+            tracing::info!(
+                "Challenge verification failed due to mismatch - expected: {:?}, actual: {:?}",
+                (r1_prime, r2_prime),
+                (r1, r2)
+            );
             ChallengeTransition {
                 state: ChallengeVerificationResult::ChallengeVerificationFailed,
             }

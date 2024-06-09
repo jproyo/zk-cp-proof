@@ -3,6 +3,8 @@ pub(crate) mod zkp_material {
     include!("zkp_material.rs");
 }
 
-mod zkp_auth {
+pub(crate) mod zkp_auth {
     include!("zkp_auth.rs");
 }
+
+pub mod server;
