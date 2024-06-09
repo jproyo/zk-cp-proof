@@ -1,10 +1,9 @@
+use crate::grpc::zkp_material;
 use anyhow::anyhow;
 use num_primes::BigUint;
 use num_traits::ToPrimitive;
 use std::ops::Deref;
 use typed_builder::TypedBuilder;
-
-use crate::grpc::zkp_material;
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct User(pub String);
@@ -63,8 +62,8 @@ impl TryFrom<Material> for zkp_material::MaterialResponse {
 
     fn try_from(m: Material) -> anyhow::Result<Self> {
         Ok(zkp_material::MaterialResponse {
-            g: m.g.to_i64().ok_or(anyhow!("cannot convert 'g' to i64"))?,
-            h: m.h.to_i64().ok_or(anyhow!("cannot conver 'h' to i64"))?,
+            g: m.g.to_u64().ok_or(anyhow!("cannot convert 'g' to u64"))?,
+            h: m.h.to_u64().ok_or(anyhow!("cannot convert 'h' to u64"))?,
         })
     }
 }

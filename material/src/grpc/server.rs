@@ -8,14 +8,17 @@ use std::sync::Arc;
 use tonic::async_trait;
 use tonic::transport::Server;
 
+/// Represents a gRPC server for handling material generation and retrieval.
 #[derive(Debug, Clone)]
 pub struct GrpcServer<APP> {
     application: Arc<APP>,
 }
 
+/// The default application type used by the gRPC server.
 pub(crate) type DefaultApp = MaterialApplication<DefaultMaterialGenerator, MemStorage>;
 
 impl GrpcServer<DefaultApp> {
+    /// Creates a new instance of the gRPC server.
     pub fn new_server() -> MaterialServer<impl Material> {
         MaterialServer::new(GrpcServer {
             application: Arc::new(DefaultApp::new_default()),
@@ -28,6 +31,15 @@ impl<APP> Material for GrpcServer<APP>
 where
     APP: MaterialService + Send + Sync + 'static,
 {
+    /// Generates material based on the provided request.
+    ///
+    /// # Arguments
+    ///
+    /// * `request` - The material generation request.
+    ///
+    /// # Returns
+    ///
+    /// The generated material response.
     async fn generate(
         &self,
         request: tonic::Request<MaterialRequest>,
@@ -50,6 +62,15 @@ where
         Ok(tonic::Response::new(resp))
     }
 
+    /// Retrieves the material for the specified user.
+    ///
+    /// # Arguments
+    ///
+    /// * `request` - The material retrieval request.
+    ///
+    /// # Returns
+    ///
+    /// The material response for the specified user.
     async fn get(
         &self,
         request: tonic::Request<zkp_material::QueryRequest>,
@@ -75,6 +96,15 @@ where
     }
 }
 
+/// Runs the gRPC server with the specified settings.
+///
+/// # Arguments
+///
+/// * `settings` - The material server configuration settings.
+///
+/// # Returns
+///
+/// An `anyhow::Result` indicating whether the server was started successfully or not.
 pub async fn run(settings: &MaterialConfig) -> anyhow::Result<()> {
     let material_server = GrpcServer::new_server();
 

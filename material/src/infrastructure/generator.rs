@@ -3,9 +3,9 @@ use num_traits::{One, ToPrimitive, Zero};
 use rand::Rng;
 use tokio::sync::oneshot;
 use tokio::time::Duration;
-
 use crate::domain::material::{Material, MaterialGenerator, PrimeOrder};
 
+/// Verifies if the given element is a generator of the group defined by the order.
 fn verify_generator(element: &BigUint, order: &BigUint) -> Result<(), Box<dyn std::error::Error>> {
     let two = BigUint::from(2_u64);
     let limit = order.to_u128().ok_or("Order is not a u128")?;
@@ -28,6 +28,7 @@ fn verify_generator(element: &BigUint, order: &BigUint) -> Result<(), Box<dyn st
     Ok(())
 }
 
+/// Verifies if the given order is a prime number.
 fn verify_prime(order: &BigUint) -> Result<(), Box<dyn std::error::Error>> {
     if !Verification::is_prime(order) {
         return Err(format!("Order {} is not prime", order).to_string().into());
@@ -35,6 +36,7 @@ fn verify_prime(order: &BigUint) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// Generates a random group element g and h, which are generators of the group defined by the order q.
 fn generate_group(
     q: &BigUint,
     limit: u128,
@@ -53,10 +55,12 @@ fn generate_group(
     Ok((g, h))
 }
 
+/// Default implementation of the `MaterialGenerator` trait.
 pub(crate) struct DefaultMaterialGenerator;
 
 #[async_trait::async_trait]
 impl MaterialGenerator for DefaultMaterialGenerator {
+    /// Generates a material using the given prime order q.
     async fn generate(&self, q: Option<PrimeOrder>) -> anyhow::Result<Material> {
         let q = q.map(Into::into).unwrap_or(Generator::safe_prime(16));
 

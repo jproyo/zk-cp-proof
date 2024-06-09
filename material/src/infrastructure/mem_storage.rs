@@ -1,12 +1,13 @@
 use dashmap::DashMap;
-
 use crate::domain::material::{Material, MaterialStorage, User};
 
+/// In-memory storage implementation for materials.
 pub(crate) struct MemStorage {
     pub(crate) materials: DashMap<User, Material>,
 }
 
 impl MemStorage {
+    /// Creates a new instance of `MemStorage`.
     pub(crate) fn new() -> Self {
         Self {
             materials: DashMap::new(),
@@ -16,10 +17,29 @@ impl MemStorage {
 
 #[async_trait::async_trait]
 impl MaterialStorage for MemStorage {
+    /// Retrieves the material associated with the given user.
+    ///
+    /// # Arguments
+    ///
+    /// * `user` - The user for which to retrieve the material.
+    ///
+    /// # Returns
+    ///
+    /// An `Option` containing the material if found, or `None` if not found.
     async fn get(&self, user: &User) -> anyhow::Result<Option<Material>> {
         Ok(self.materials.get(user).map(|m| m.value().clone()))
     }
 
+    /// Stores the material for the given user.
+    ///
+    /// # Arguments
+    ///
+    /// * `user` - The user for which to store the material.
+    /// * `material` - The material to store.
+    ///
+    /// # Returns
+    ///
+    /// An `Ok` result if the material was stored successfully, or an `Err` if an error occurred.
     async fn store(&self, user: User, material: Material) -> anyhow::Result<()> {
         self.materials.insert(user, material);
         Ok(())
