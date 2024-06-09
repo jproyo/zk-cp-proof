@@ -47,9 +47,10 @@ where
         let req = request.into_inner();
         let user = req.user.into();
         let q = req.q.map(|q| (q as u64).into());
+        let p = req.p.map(|p| (p as u64).into());
         let material = self
             .application
-            .create_material(&user, q)
+            .create_material(&user, q, p)
             .await
             .map_err(|e| {
                 tracing::error!("Error generating material: {:?}", e);

@@ -13,11 +13,14 @@ message MaterialRequest {
   // 1. If it is present it tries to generate using that prime order if it is valid
   // 2. If it is not present it tries to generate using a random prime order
   optional int64 q = 2;
+  optional int64 p = 3;
 }
 
 message MaterialResponse {
-  uint64 g = 2;
-  uint64 h = 3;
+  int64 g = 2;
+  int64 h = 3;
+  int64 q = 4;
+  int64 p = 5;
 }
 
 message QueryRequest {

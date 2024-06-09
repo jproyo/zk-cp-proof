@@ -2215,7 +2215,6 @@ dependencies = [
  "dashmap",
  "glob",
  "num-bigint 0.4.5",
- "num-primes",
  "num-traits",
  "prost",
  "prost-build",

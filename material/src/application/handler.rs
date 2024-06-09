@@ -17,8 +17,12 @@ pub trait MaterialService {
     /// # Returns
     ///
     /// Returns a `Result` containing the created `Material` if successful, or an `anyhow::Error` otherwise.
-    async fn create_material(&self, user: &User, q: Option<PrimeOrder>)
-        -> anyhow::Result<Material>;
+    async fn create_material(
+        &self,
+        user: &User,
+        q: Option<PrimeOrder>,
+        p: Option<PrimeOrder>,
+    ) -> anyhow::Result<Material>;
 
     /// Retrieves the material for the given user.
     ///
@@ -51,6 +55,7 @@ where
         &self,
         user: &User,
         q: Option<PrimeOrder>,
+        p: Option<PrimeOrder>,
     ) -> anyhow::Result<Material> {
         tracing::info!("Creating material for user {:?}", user);
         let material = self.storage.get(user).await?;
@@ -63,7 +68,7 @@ where
         }
 
         tracing::info!("Generating material for user {:?}", user);
-        let material = self.generator.generate(q).await?;
+        let material = self.generator.generate(q, p).await?;
 
         tracing::info!("Storing material {:?} for user {:?}", material, user);
         self.storage
@@ -107,7 +112,10 @@ mod tests {
         let application = MaterialApplication::new(generator, storage);
 
         let user = "test_user".into();
-        let material = application.create_material(&user, None).await.unwrap();
+        let material = application
+            .create_material(&user, None, None)
+            .await
+            .unwrap();
         assert_eq!(
             material,
             application.get_material(&user).await.unwrap().unwrap()
@@ -122,13 +130,19 @@ mod tests {
         let application = MaterialApplication::new(generator, storage);
 
         let user = "test_user".into();
-        let material = application.create_material(&user, None).await.unwrap();
+        let material = application
+            .create_material(&user, None, None)
+            .await
+            .unwrap();
         assert_eq!(
             material,
             application.get_material(&user).await.unwrap().unwrap()
         );
 
-        let material = application.create_material(&user, None).await.unwrap();
+        let material = application
+            .create_material(&user, None, None)
+            .await
+            .unwrap();
         assert_eq!(
             material,
             application.get_material(&user).await.unwrap().unwrap()
@@ -144,8 +158,14 @@ mod tests {
 
         let user1 = "test_user1".into();
         let user2 = "test_user2".into();
-        let material1 = application.create_material(&user1, None).await.unwrap();
-        let material2 = application.create_material(&user2, None).await.unwrap();
+        let material1 = application
+            .create_material(&user1, None, None)
+            .await
+            .unwrap();
+        let material2 = application
+            .create_material(&user2, None, None)
+            .await
+            .unwrap();
         assert_eq!(
             material1,
             application.get_material(&user1).await.unwrap().unwrap()
@@ -164,8 +184,14 @@ mod tests {
         let application = MaterialApplication::new(generator, storage);
 
         let user = "test_user".into();
-        let material1 = application.create_material(&user, None).await.unwrap();
-        let material2 = application.create_material(&user, None).await.unwrap();
+        let material1 = application
+            .create_material(&user, None, None)
+            .await
+            .unwrap();
+        let material2 = application
+            .create_material(&user, None, None)
+            .await
+            .unwrap();
         assert_eq!(material1, material2);
     }
 
@@ -187,7 +213,12 @@ mod tests {
         let generator = DefaultMaterialGenerator;
         let storage = MemStorage::new();
         let user: User = "test_user".into();
-        let material = Material::builder().g(1u64.into()).h(2u64.into()).build();
+        let material = Material::builder()
+            .g(1u64.into())
+            .h(2u64.into())
+            .p(7u64.into())
+            .q(11u64.into())
+            .build();
         storage.store(user.clone(), material.clone()).await.unwrap();
         let application = MaterialApplication::new(generator, storage);
 
@@ -201,8 +232,18 @@ mod tests {
         let generator = DefaultMaterialGenerator;
         let storage = MemStorage::new();
         let user: User = "test_user".into();
-        let material_1 = Material::builder().g(1u64.into()).h(2u64.into()).build();
-        let material_2 = Material::builder().g(3u64.into()).h(4u64.into()).build();
+        let material_1 = Material::builder()
+            .g(1u64.into())
+            .h(2u64.into())
+            .p(11u64.into())
+            .q(7u64.into())
+            .build();
+        let material_2 = Material::builder()
+            .g(3u64.into())
+            .h(4u64.into())
+            .p(11u64.into())
+            .q(7u64.into())
+            .build();
         storage
             .store(user.clone(), material_1.clone())
             .await

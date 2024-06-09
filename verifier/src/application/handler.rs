@@ -1,6 +1,3 @@
-use async_trait::async_trait;
-use typed_builder::TypedBuilder;
-
 use crate::conf::VerifierConfig;
 use crate::domain::verifier::{
     Challenge, ChallengeStarted, ChallengeStore, ChallengeTransition, ChallengeVerification,
@@ -8,19 +5,50 @@ use crate::domain::verifier::{
 };
 use crate::infrastructure::grpc_registry::GrpcRegistryClient;
 use crate::infrastructure::mem_storage::MemStorage;
+use async_trait::async_trait;
+use typed_builder::TypedBuilder;
 
 #[async_trait]
+/// Trait representing a verifier service.
 pub trait VerifierService {
+    /// Asynchronously registers a user.
+    ///
+    /// # Arguments
+    ///
+    /// * `register` - The registration information.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` indicating success or failure.
     async fn register(&self, register: Register) -> anyhow::Result<()>;
 
+    /// Asynchronously creates a challenge for the user.
+    ///
+    /// # Arguments
+    ///
+    /// * `challenge` - The challenge information.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing the started challenge or an error.
     async fn create_challenge(&self, challenge: Challenge) -> anyhow::Result<ChallengeStarted>;
 
+    /// Asynchronously verifies a challenge.
+    ///
+    /// # Arguments
+    ///
+    /// * `challenge` - The challenge verification information.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing the verification result or an error.
     async fn verify_challenge(
         &self,
         challenge: ChallengeVerification,
     ) -> anyhow::Result<ChallengeVerificationResult>;
 }
 
+/// Represents a Verifier Application.
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct VerifierApplication<M, S> {
     material: M,
@@ -95,7 +123,7 @@ where
             <ChallengeVerification as Into<ChallengeTransition<ChallengeVerification>>>::into(
                 challenge_ver,
             )
-            .change(&user, &challenge, &material, s)
+            .change(&user, &challenge, &material, s, 7)
             .into_inner();
         Ok(result)
     }

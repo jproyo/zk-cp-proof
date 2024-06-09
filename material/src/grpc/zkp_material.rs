@@ -13,6 +13,8 @@ pub struct MaterialRequest {
     /// 2. If it is not present it tries to generate using a random prime order
     #[prost(int64, optional, tag = "2")]
     pub q: ::core::option::Option<i64>,
+    #[prost(int64, optional, tag = "3")]
+    pub p: ::core::option::Option<i64>,
 }
 impl ::prost::Name for MaterialRequest {
     const NAME: &'static str = "MaterialRequest";
@@ -27,10 +29,14 @@ impl ::prost::Name for MaterialRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MaterialResponse {
-    #[prost(uint64, tag = "2")]
-    pub g: u64,
-    #[prost(uint64, tag = "3")]
-    pub h: u64,
+    #[prost(int64, tag = "2")]
+    pub g: i64,
+    #[prost(int64, tag = "3")]
+    pub h: i64,
+    #[prost(int64, tag = "4")]
+    pub q: i64,
+    #[prost(int64, tag = "5")]
+    pub p: i64,
 }
 impl ::prost::Name for MaterialResponse {
     const NAME: &'static str = "MaterialResponse";

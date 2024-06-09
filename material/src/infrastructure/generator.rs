@@ -1,9 +1,9 @@
+use crate::domain::material::{Material, MaterialGenerator, PrimeOrder};
 use num_primes::{BigUint, Generator, Verification};
 use num_traits::{One, ToPrimitive, Zero};
 use rand::Rng;
 use tokio::sync::oneshot;
 use tokio::time::Duration;
-use crate::domain::material::{Material, MaterialGenerator, PrimeOrder};
 
 /// Verifies if the given element is a generator of the group defined by the order.
 fn verify_generator(element: &BigUint, order: &BigUint) -> Result<(), Box<dyn std::error::Error>> {
@@ -61,10 +61,19 @@ pub(crate) struct DefaultMaterialGenerator;
 #[async_trait::async_trait]
 impl MaterialGenerator for DefaultMaterialGenerator {
     /// Generates a material using the given prime order q.
-    async fn generate(&self, q: Option<PrimeOrder>) -> anyhow::Result<Material> {
+    async fn generate(
+        &self,
+        q: Option<PrimeOrder>,
+        p: Option<PrimeOrder>,
+    ) -> anyhow::Result<Material> {
         let q = q.map(Into::into).unwrap_or(Generator::safe_prime(16));
+        let p = p.map(Into::into).unwrap_or(Generator::safe_prime(16));
+        if q == p {
+            return Err(anyhow::anyhow!("q and p cannot be the same"));
+        }
 
         verify_prime(&q).map_err(|e| anyhow::anyhow!("{e}"))?;
+        verify_prime(&p).map_err(|e| anyhow::anyhow!("{e}"))?;
         let limit = q
             .to_u128()
             .ok_or("Order is not a u128")
@@ -76,6 +85,7 @@ impl MaterialGenerator for DefaultMaterialGenerator {
             tokio::time::sleep(Duration::from_secs(10)).await;
             timeout_tx.send(()).unwrap();
         };
+        let rq = q.clone();
 
         let task = async move {
             loop {
@@ -101,7 +111,7 @@ impl MaterialGenerator for DefaultMaterialGenerator {
             }
         }?;
 
-        Ok(Material::builder().g(r.0).h(r.1).build())
+        Ok(Material::builder().g(r.0).h(r.1).p(p.clone()).q(rq).build())
     }
 }
 
@@ -112,7 +122,7 @@ mod tests {
     #[tokio::test]
     async fn test_default_material_generator() {
         let generator = DefaultMaterialGenerator;
-        let material = generator.generate(None).await;
+        let material = generator.generate(None, None).await;
         assert!(material.is_ok());
     }
 

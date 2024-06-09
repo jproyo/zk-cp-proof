@@ -1,92 +1,28 @@
-use num_bigint::BigUint;
-use rand::Rng;
-use std::ops::Deref;
-use typed_builder::TypedBuilder;
-use uuid::Uuid;
-
 use crate::grpc::zkp_auth::{
     AuthenticationAnswerRequest, AuthenticationChallengeRequest, AuthenticationChallengeResponse,
     RegisterRequest,
 };
 use crate::grpc::zkp_material::MaterialResponse;
+use rand::Rng;
+use std::ops::Deref;
+use typed_builder::TypedBuilder;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct Register {
     pub user: User,
-    pub y1: BigUint,
-    pub y2: BigUint,
+    pub y1: i64,
+    pub y2: i64,
 }
 
 impl From<RegisterRequest> for Register {
     fn from(req: RegisterRequest) -> Self {
         Register {
             user: req.user.into(),
-            y1: BigUint::from(req.y1 as u64),
-            y2: BigUint::from(req.y2 as u64),
+            y1: req.y1,
+            y2: req.y2,
         }
     }
-}
-
-#[derive(Debug, Clone, TypedBuilder)]
-pub struct Challenge {
-    pub user: User,
-    pub r1: BigUint,
-    pub r2: BigUint,
-}
-
-impl From<AuthenticationChallengeRequest> for Challenge {
-    fn from(req: AuthenticationChallengeRequest) -> Self {
-        Challenge {
-            user: req.user.into(),
-            r1: BigUint::from(req.r1 as u64),
-            r2: BigUint::from(req.r2 as u64),
-        }
-    }
-}
-
-#[derive(Debug, Clone, TypedBuilder)]
-pub struct ChallengeStarted {
-    pub auth_id: AuthId,
-    pub c: u32,
-}
-
-impl From<ChallengeStarted> for AuthenticationChallengeResponse {
-    fn from(resp: ChallengeStarted) -> Self {
-        AuthenticationChallengeResponse {
-            auth_id: resp.auth_id.to_string(),
-            c: resp.c,
-        }
-    }
-}
-
-#[derive(Debug, Clone, TypedBuilder)]
-pub struct ChallengeStore {
-    pub challenge: Challenge,
-    pub challenge_started: ChallengeStarted,
-}
-
-#[derive(Debug, Clone, TypedBuilder)]
-pub struct ChallengeVerification {
-    pub auth_id: AuthId,
-    pub s: u32,
-}
-
-impl From<AuthenticationAnswerRequest> for ChallengeVerification {
-    fn from(req: AuthenticationAnswerRequest) -> Self {
-        ChallengeVerification {
-            auth_id: req.auth_id.into(),
-            s: req.s,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct SessionId(pub String);
-
-#[derive(Debug, Clone)]
-pub enum ChallengeVerificationResult {
-    ChallengeVerified(SessionId),
-    ChallengeVerificationFailed,
 }
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
@@ -137,19 +73,82 @@ impl Deref for User {
 
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct Material {
-    pub g: BigUint,
-    pub h: BigUint,
+    pub g: i64,
+    pub h: i64,
 }
 
 impl From<MaterialResponse> for Material {
     fn from(resp: MaterialResponse) -> Self {
         Material {
-            g: BigUint::from(resp.g),
-            h: BigUint::from(resp.h),
+            g: resp.g,
+            h: resp.h,
         }
     }
 }
 
+#[derive(Debug, Clone, TypedBuilder)]
+pub struct Challenge {
+    pub user: User,
+    pub r1: i64,
+    pub r2: i64,
+}
+
+impl From<AuthenticationChallengeRequest> for Challenge {
+    fn from(req: AuthenticationChallengeRequest) -> Self {
+        Challenge {
+            user: req.user.into(),
+            r1: req.r1,
+            r2: req.r2,
+        }
+    }
+}
+
+#[derive(Debug, Clone, TypedBuilder)]
+pub struct ChallengeStarted {
+    pub auth_id: AuthId,
+    pub c: i32,
+}
+
+impl From<ChallengeStarted> for AuthenticationChallengeResponse {
+    fn from(resp: ChallengeStarted) -> Self {
+        AuthenticationChallengeResponse {
+            auth_id: resp.auth_id.to_string(),
+            c: resp.c,
+        }
+    }
+}
+
+#[derive(Debug, Clone, TypedBuilder)]
+pub struct ChallengeStore {
+    pub challenge: Challenge,
+    pub challenge_started: ChallengeStarted,
+}
+
+#[derive(Debug, Clone, TypedBuilder)]
+pub struct ChallengeVerification {
+    pub auth_id: AuthId,
+    pub s: i32,
+}
+
+impl From<AuthenticationAnswerRequest> for ChallengeVerification {
+    fn from(req: AuthenticationAnswerRequest) -> Self {
+        ChallengeVerification {
+            auth_id: req.auth_id.into(),
+            s: req.s,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SessionId(pub String);
+
+#[derive(Debug, Clone)]
+pub enum ChallengeVerificationResult {
+    ChallengeVerified(SessionId),
+    ChallengeVerificationFailed,
+}
+
+/// Trait Type State Pattern
 pub(crate) trait ChallengeState {}
 impl ChallengeState for Challenge {}
 impl ChallengeState for ChallengeVerificationResult {}
@@ -179,9 +178,17 @@ where
 }
 
 impl ChallengeTransition<Challenge> {
+    /// Changes the state of the challenge to `ChallengeStarted`.
+    ///
+    /// This method generates a random value `c` and creates a new `ChallengeTransition`
+    /// with the state set to `ChallengeStarted` and the `auth_id` and `c` values initialized.
+    ///
+    /// # Returns
+    ///
+    /// Returns a new `ChallengeTransition` with the state set to `ChallengeStarted`.
     pub fn change(self) -> ChallengeTransition<ChallengeStarted> {
         let mut rng = rand::thread_rng();
-        let random_c: u32 = rng.gen();
+        let random_c: i32 = rng.gen();
         ChallengeTransition {
             state: ChallengeStarted {
                 auth_id: AuthId(Uuid::new_v4().to_string()),
@@ -191,13 +198,29 @@ impl ChallengeTransition<Challenge> {
     }
 }
 
+/// Implements the `change` method for the `ChallengeTransition<ChallengeVerification>` struct.
+/// This method is used to change the state of the challenge transition based on the provided parameters.
 impl ChallengeTransition<ChallengeVerification> {
+    /// Changes the state of the challenge transition.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The current `ChallengeTransition<ChallengeVerification>` instance.
+    /// * `register` - The register containing the values used in the challenge.
+    /// * `challenge` - The challenge store containing the challenge and its metadata.
+    /// * `material` - The material containing the cryptographic parameters.
+    /// * `s` - The value used in the calculation of `r1_prime` and `r2_prime`.
+    ///
+    /// # Returns
+    ///
+    /// Returns a new `ChallengeTransition<ChallengeVerificationResult>` instance with the updated state.
     pub fn change(
         self,
         register: &Register,
         challenge: &ChallengeStore,
         material: &Material,
-        s: u32,
+        s: i32,
+        q: i64,
     ) -> ChallengeTransition<ChallengeVerificationResult> {
         let c = challenge.challenge_started.c;
         let challenge = &challenge.challenge;
@@ -207,8 +230,8 @@ impl ChallengeTransition<ChallengeVerification> {
         let r2 = &challenge.r2;
         let g = &material.g;
         let h = &material.h;
-        let r1_prime = g.pow(s) * y1.pow(c);
-        let r2_prime = h.pow(s) * y2.pow(c);
+        let r1_prime = (g.pow(s as u32) * y1.pow(c as u32)).rem_euclid(q);
+        let r2_prime = (h.pow(s as u32) * y2.pow(c as u32)).rem_euclid(q);
         if r1 == &r1_prime && r2 == &r2_prime {
             tracing::info!("Challenge verified successfully");
             ChallengeTransition {
@@ -235,13 +258,193 @@ pub trait MaterialRegistry {
 }
 
 #[async_trait::async_trait]
+/// Trait representing the storage interface for the verifier.
 pub trait VerifierStorage {
+    /// Asynchronously stores a user's register.
+    ///
+    /// # Arguments
+    ///
+    /// * `register` - The register to store.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the operation is successful, otherwise returns an `anyhow::Error`.
     async fn store_user(&self, register: Register) -> anyhow::Result<()>;
+
+    /// Asynchronously stores a challenge for a given authentication ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `auth_id` - The authentication ID.
+    /// * `challenge` - The challenge to store.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the operation is successful, otherwise returns an `anyhow::Error`.
     async fn store_challenge(
         &self,
         auth_id: &AuthId,
         challenge: ChallengeStore,
     ) -> anyhow::Result<()>;
+
+    /// Asynchronously retrieves a user's register.
+    ///
+    /// # Arguments
+    ///
+    /// * `user` - The user to retrieve the register for.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(Some(register))` if the user's register is found, `Ok(None)` if the user is not found,
+    /// otherwise returns an `anyhow::Error`.
     async fn get_user(&self, user: &User) -> anyhow::Result<Option<Register>>;
+
+    /// Asynchronously retrieves a challenge for a given authentication ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `auth_id` - The authentication ID.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(Some(challenge))` if the challenge is found, `Ok(None)` if the challenge is not found,
+    /// otherwise returns an `anyhow::Error`.
     async fn get_challenge(&self, auth_id: &AuthId) -> anyhow::Result<Option<ChallengeStore>>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_challenge_transition_change() {
+        let q = 7;
+        let p = 11;
+        let g: i64 = 4;
+        let h: i64 = 5;
+        let x = 3;
+        let c = 2;
+        let y1 = g.pow(x as u32) % p;
+        let y2 = h.pow(x as u32) % p;
+        let register = Register::builder()
+            .user(User::from("test_user"))
+            .y1(y1)
+            .y2(y2)
+            .build();
+
+        let rand_k = rand::thread_rng().gen_range(1..10);
+
+        let r1 = g.pow(rand_k as u32) % p;
+        let r2 = h.pow(rand_k as u32) % p;
+
+        let challenge = Challenge::builder()
+            .user(User::from("test_user"))
+            .r1(r1)
+            .r2(r2)
+            .build();
+
+        let challenge_started = ChallengeStarted::builder()
+            .auth_id(AuthId::from("test_auth_id"))
+            .c(c)
+            .build();
+
+        let s = (rand_k - c * x) % q;
+
+        let challenge_store = ChallengeStore::builder()
+            .challenge(challenge.clone())
+            .challenge_started(challenge_started.clone())
+            .build();
+
+        let material = Material::builder().g(g).h(h).build();
+
+        let transition = ChallengeTransition::<Challenge>::from(challenge)
+            .change()
+            .into_inner();
+
+        assert_ne!(transition.auth_id.to_string(), "");
+        assert_ne!(transition.c, challenge_started.c);
+
+        let challenge_verification = ChallengeVerification::builder()
+            .auth_id(challenge_started.auth_id)
+            .s(s)
+            .build();
+
+        let transition = ChallengeTransition::<ChallengeVerification>::from(challenge_verification)
+            .change(&register, &challenge_store, &material, s, p)
+            .into_inner();
+
+        match transition {
+            ChallengeVerificationResult::ChallengeVerified(session_id) => {
+                assert_ne!(session_id.0, "");
+            }
+            ChallengeVerificationResult::ChallengeVerificationFailed => {
+                unreachable!("Challenge verification failed unexpectedly");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_challenge_transition_change_failed() {
+        let q = 7;
+        let p = 11;
+        let g: i64 = 4;
+        let h: i64 = 5;
+        let x = 3;
+        let c = 2;
+        let y1 = g.pow(x as u32) % p;
+        let y2 = h.pow(x as u32) % p;
+        let register = Register::builder()
+            .user(User::from("test_user"))
+            .y1(y1)
+            .y2(y2)
+            .build();
+
+        let rand_k = rand::thread_rng().gen_range(1..10);
+
+        let r1 = g.pow(rand_k as u32) % p;
+        let r2 = h.pow(rand_k as u32) % p;
+
+        let challenge = Challenge::builder()
+            .user(User::from("test_user"))
+            .r1(r1)
+            .r2(r2)
+            .build();
+
+        let challenge_started = ChallengeStarted::builder()
+            .auth_id(AuthId::from("test_auth_id"))
+            .c(c)
+            .build();
+
+        let s = (rand_k - c * x) % q;
+
+        let challenge_store = ChallengeStore::builder()
+            .challenge(challenge.clone())
+            .challenge_started(challenge_started.clone())
+            .build();
+
+        let material = Material::builder().g(g).h(h).build();
+
+        let transition = ChallengeTransition::<Challenge>::from(challenge)
+            .change()
+            .into_inner();
+
+        assert_ne!(transition.auth_id.to_string(), "");
+        assert_ne!(transition.c, challenge_started.c);
+
+        let challenge_verification = ChallengeVerification::builder()
+            .auth_id(challenge_started.auth_id)
+            .s(s)
+            .build();
+
+        let transition = ChallengeTransition::<ChallengeVerification>::from(challenge_verification)
+            .change(&register, &challenge_store, &material, s + 1, p)
+            .into_inner();
+
+        match transition {
+            ChallengeVerificationResult::ChallengeVerified(_) => {
+                unreachable!("Challenge verification succeeded unexpectedly");
+            }
+            ChallengeVerificationResult::ChallengeVerificationFailed => {}
+        }
+    }
 }

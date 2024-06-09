@@ -55,6 +55,8 @@ impl Deref for PrimeOrder {
 pub struct Material {
     pub g: BigUint,
     pub h: BigUint,
+    pub p: BigUint,
+    pub q: BigUint,
 }
 
 impl TryFrom<Material> for zkp_material::MaterialResponse {
@@ -62,8 +64,10 @@ impl TryFrom<Material> for zkp_material::MaterialResponse {
 
     fn try_from(m: Material) -> anyhow::Result<Self> {
         Ok(zkp_material::MaterialResponse {
-            g: m.g.to_u64().ok_or(anyhow!("cannot convert 'g' to u64"))?,
-            h: m.h.to_u64().ok_or(anyhow!("cannot convert 'h' to u64"))?,
+            g: m.g.to_i64().ok_or(anyhow!("cannot convert 'g' to i64"))?,
+            h: m.h.to_i64().ok_or(anyhow!("cannot convert 'h' to i64"))?,
+            p: m.p.to_i64().ok_or(anyhow!("cannot convert 'p' to i64"))?,
+            q: m.q.to_i64().ok_or(anyhow!("cannot convert 'q' to i64"))?,
         })
     }
 }
@@ -80,13 +84,18 @@ pub trait MaterialGenerator {
     //
     // # Arguments
     // * `q` - The prime order q
+    // * `p` - The prime order p
     //
     // # Returns
     // A material with a prime order q
     //
     // # Errors
     // Returns an error if the material cannot be generated
-    async fn generate(&self, q: Option<PrimeOrder>) -> anyhow::Result<Material>;
+    async fn generate(
+        &self,
+        q: Option<PrimeOrder>,
+        p: Option<PrimeOrder>,
+    ) -> anyhow::Result<Material>;
 }
 
 // Material storage is a trait that stores and retrieves a material for a user.

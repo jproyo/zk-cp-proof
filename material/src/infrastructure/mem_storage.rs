@@ -1,5 +1,5 @@
-use dashmap::DashMap;
 use crate::domain::material::{Material, MaterialStorage, User};
+use dashmap::DashMap;
 
 /// In-memory storage implementation for materials.
 pub(crate) struct MemStorage {
@@ -55,7 +55,12 @@ mod tests {
     async fn test_mem_storage() {
         let storage = MemStorage::new();
         let user = "test_user".into();
-        let material = Material::builder().g(1u64.into()).h(2u64.into()).build();
+        let material = Material::builder()
+            .g(1u64.into())
+            .h(2u64.into())
+            .p(7u64.into())
+            .q(3u64.into())
+            .build();
 
         let stored_material = storage.get(&user).await.unwrap();
         assert!(stored_material.is_none());
