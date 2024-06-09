@@ -8,12 +8,22 @@ use tokio::time::Duration;
 use tonic::transport::{Channel, Endpoint};
 use typed_builder::TypedBuilder;
 
+/// Represents a gRPC client for the material registry.
 #[derive(Clone, TypedBuilder)]
 pub struct GrpcRegistryClient {
     client: Arc<Mutex<Channel>>,
 }
 
 impl GrpcRegistryClient {
+    /// Creates a new `GrpcRegistryClient` instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - The verifier configuration.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the `GrpcRegistryClient` instance if successful, or an `anyhow::Error` if an error occurred.
     pub fn new(config: &VerifierConfig) -> Result<Self, anyhow::Error> {
         let endpoints = config
             .material
@@ -35,6 +45,15 @@ impl GrpcRegistryClient {
 
 #[async_trait::async_trait]
 impl MaterialRegistry for GrpcRegistryClient {
+    /// Queries the material registry for the given user.
+    ///
+    /// # Arguments
+    ///
+    /// * `user` - The user to query the material for.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing an `Option` of the material for the user if found, or an `anyhow::Error` if an error occurred.
     async fn query(
         &self,
         user: &crate::domain::verifier::User,

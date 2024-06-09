@@ -210,7 +210,7 @@ impl ChallengeTransition<ChallengeVerification> {
     /// * `challenge` - The challenge store containing the challenge and its metadata.
     /// * `material` - The material containing the cryptographic parameters.
     /// * `s` - The value used in the calculation of `r1_prime` and `r2_prime`.
-    ///
+    /// * `p` - The prime order.
     /// # Returns
     ///
     /// Returns a new `ChallengeTransition<ChallengeVerificationResult>` instance with the updated state.
@@ -220,7 +220,7 @@ impl ChallengeTransition<ChallengeVerification> {
         challenge: &ChallengeStore,
         material: &Material,
         s: i32,
-        q: i64,
+        p: i64,
     ) -> ChallengeTransition<ChallengeVerificationResult> {
         let c = challenge.challenge_started.c;
         let challenge = &challenge.challenge;
@@ -230,8 +230,8 @@ impl ChallengeTransition<ChallengeVerification> {
         let r2 = &challenge.r2;
         let g = &material.g;
         let h = &material.h;
-        let r1_prime = (g.pow(s as u32) * y1.pow(c as u32)).rem_euclid(q);
-        let r2_prime = (h.pow(s as u32) * y2.pow(c as u32)).rem_euclid(q);
+        let r1_prime = (g.pow(s as u32) * y1.pow(c as u32)) % p;
+        let r2_prime = (h.pow(s as u32) * y2.pow(c as u32)) % p;
         if r1 == &r1_prime && r2 == &r2_prime {
             tracing::info!("Challenge verified successfully");
             ChallengeTransition {
@@ -332,7 +332,7 @@ mod tests {
             .y2(y2)
             .build();
 
-        let rand_k = rand::thread_rng().gen_range(1..10);
+        let rand_k = rand::thread_rng().gen_range(0..=p) as i32;
 
         let r1 = g.pow(rand_k as u32) % p;
         let r2 = h.pow(rand_k as u32) % p;
@@ -399,7 +399,7 @@ mod tests {
             .y2(y2)
             .build();
 
-        let rand_k = rand::thread_rng().gen_range(1..10);
+        let rand_k = rand::thread_rng().gen_range(0..=p) as i32;
 
         let r1 = g.pow(rand_k as u32) % p;
         let r2 = h.pow(rand_k as u32) % p;
@@ -437,7 +437,7 @@ mod tests {
             .build();
 
         let transition = ChallengeTransition::<ChallengeVerification>::from(challenge_verification)
-            .change(&register, &challenge_store, &material, s + 1, p)
+            .change(&register, &challenge_store, &material, s + 1, p - 2)
             .into_inner();
 
         match transition {

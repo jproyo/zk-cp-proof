@@ -20,6 +20,15 @@ pub struct GrpcServer<APP> {
 pub(crate) type DefaultApp = VerifierApplication<GrpcRegistryClient, MemStorage>;
 
 impl GrpcServer<DefaultApp> {
+    /// Creates a new gRPC server with the given configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `conf` - The verifier configuration.
+    ///
+    /// # Returns
+    ///
+    /// A Result containing the authenticated server if successful, or an error if the server creation fails.
     pub fn new_server(conf: &VerifierConfig) -> anyhow::Result<AuthServer<impl Auth>> {
         let app = DefaultApp::new_with_config(conf)?;
         Ok(AuthServer::new(GrpcServer {
