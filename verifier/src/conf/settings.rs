@@ -64,5 +64,6 @@ mod tests {
 
         assert_eq!(conf.port, 50_000);
         assert_eq!(conf.response_timeout_in_secs, 60);
+        assert_eq!(conf.material.addresses, vec!["http://localhost:50000"]);
     }
 }
