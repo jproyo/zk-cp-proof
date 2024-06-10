@@ -2234,12 +2234,16 @@ checksum = "ced3678a2879b30306d323f4542626697a464a97c0a07c9aebf7ebca65cd4dde"
 name = "zk-cp-protocol"
 version = "0.1.0"
 dependencies = [
+ "clap",
  "num-bigint 0.4.5",
  "num-primes",
  "num-traits",
  "rand 0.8.5",
  "serde",
+ "serde_json",
+ "tokio",
  "tracing",
+ "tracing-subscriber",
  "typed-builder",
  "uuid",
 ]

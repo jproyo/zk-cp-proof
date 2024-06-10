@@ -62,7 +62,7 @@ impl Deref for AuthId {
     }
 }
 
-#[derive(Debug, Clone, TypedBuilder, Serialize, Deserialize)]
+#[derive(Debug, Clone, TypedBuilder)]
 pub struct Material {
     pub g: BigInt,
     pub h: BigInt,
@@ -84,6 +84,36 @@ impl Material {
 impl Default for Material {
     fn default() -> Self {
         Material::generate(None)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MaterialSerde {
+    pub user: String,
+    pub g: String,
+    pub h: String,
+    pub q: String,
+    pub p: String,
+}
+
+impl MaterialSerde {
+    pub fn from_material(material: &Material, user: &str) -> Self {
+        MaterialSerde {
+            user: user.to_string(),
+            g: material.g.to_str_radix(16),
+            h: material.h.to_str_radix(16),
+            q: material.q.to_str_radix(16),
+            p: material.p.to_str_radix(16),
+        }
+    }
+
+    pub fn to_material(&self) -> Material {
+        Material {
+            g: BigInt::parse_bytes(self.g.as_bytes(), 16).unwrap(),
+            h: BigInt::parse_bytes(self.h.as_bytes(), 16).unwrap(),
+            q: BigInt::parse_bytes(self.q.as_bytes(), 16).unwrap(),
+            p: BigInt::parse_bytes(self.p.as_bytes(), 16).unwrap(),
+        }
     }
 }
 

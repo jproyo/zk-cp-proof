@@ -15,12 +15,14 @@
 ///
 /// Example usage:
 ///
-/// ```rust
-/// use crate::conf::VerifierConfig;
+/// ```rust,no_run
+/// use zk_verifier::conf;
+/// use zk_verifier::conf::VerifierConfig;
+/// use zk_verifier::grpc::server::run;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let settings: VerifierConfig = conf::init()?;
+///     let settings: VerifierConfig = conf::init(None)?;
 ///     run(&settings).await?;
 ///     Ok(())
 /// }
