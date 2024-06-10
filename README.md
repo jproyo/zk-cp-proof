@@ -3,7 +3,7 @@
 # Chaum-Pedersen Zero-Knowledge Protocol Implementation
 
 This project is an implementation of the [Chaum-Pedersen](https://www.cs.umd.edu/~waa/414-F11/IntroToCrypto.pdf) - page 377 section "3. Sigma Protocols"
-subsection "3.2. Chaum–Pedersen Protocol." - Zero-Knowledge protocol for authentication. 
+subsection "3.2. Chaum–Pedersen Protocol." - Zero-Knowledge protocol for authentication.
 
 In this section, I will explore a minimalistic implementation of a Payment Engine. I will need to deal with multiple transactions and keep track of each User Account Balance.
 
@@ -117,7 +117,7 @@ For more information about parameters run `carog run -- --help`.
 > cargo test
 ```
 
---- 
+---
 
 ## Design Documentation
 In this section, It will described all the assumptions, decisions, and pending improvements of SOTA of this project.
@@ -161,6 +161,6 @@ In `protocol` it could have been used `thiserror` but since there are any `unwra
 
 - Implements observability.
 - Implements automated integration tests
-- Implements CI pipeline and automated deployment
+- Implements CD pipeline and automated deployment
 
 
