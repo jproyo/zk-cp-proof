@@ -6,11 +6,14 @@ use crate::domain::verifier::{
 use crate::infrastructure::file_params::FileParams;
 use crate::infrastructure::mem_storage::MemStorage;
 use async_trait::async_trait;
+#[cfg(test)]
+use mockall::{automock, predicate::*};
 use typed_builder::TypedBuilder;
 use zk_cp_protocol::protocol::cp::{Material, ProtocolState, ProtocolTransition, Verification};
 
-#[async_trait]
 /// Trait representing a verifier service.
+#[cfg_attr(test, automock)]
+#[async_trait]
 pub trait VerifierService {
     /// Asynchronously registers a user.
     ///
@@ -153,5 +156,175 @@ impl VerifierApplication<FileParams, MemStorage> {
     pub fn new_with_config(conf: &VerifierConfig) -> anyhow::Result<Self> {
         let material = FileParams::new(conf)?;
         Ok(Self::new(material, MemStorage::new()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use num_bigint::BigInt;
+
+    use super::*;
+    use crate::domain::verifier::{MockParams, MockVerifierStorage};
+
+    #[tokio::test]
+    async fn test_register() {
+        let mut params = MockParams::new();
+        params
+            .expect_query()
+            .times(1)
+            .returning(|_| Ok(Some(Material::default())));
+        let mut storage = MockVerifierStorage::new();
+        storage.expect_store_user().times(1).returning(|_| Ok(()));
+        let app = VerifierApplication::new(params, storage);
+        let register = Register::builder()
+            .user("test".into())
+            .y1(BigInt::from(11))
+            .y2(BigInt::from(13))
+            .build();
+        assert!(app.register(register).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_register_error() {
+        let mut params = MockParams::new();
+        params.expect_query().times(1).returning(|_| Ok(None));
+        let storage = MockVerifierStorage::new();
+        let app = VerifierApplication::new(params, storage);
+        let register = Register::builder()
+            .user("test".into())
+            .y1(BigInt::from(11))
+            .y2(BigInt::from(13))
+            .build();
+        assert!(app.register(register).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_create_challenge() {
+        let mut params = MockParams::new();
+        params
+            .expect_query()
+            .times(1)
+            .returning(|_| Ok(Some(Material::default())));
+        let mut storage = MockVerifierStorage::new();
+        storage
+            .expect_store_challenge()
+            .times(1)
+            .returning(|_, _| Ok(()));
+        let app = VerifierApplication::new(params, storage);
+        let challenge = Challenge::builder()
+            .user("test".into())
+            .r1(BigInt::from(11))
+            .r2(BigInt::from(13))
+            .build();
+        assert!(app.create_challenge(challenge).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_create_challenge_error() {
+        let mut params = MockParams::new();
+        params.expect_query().times(1).returning(|_| Ok(None));
+        let storage = MockVerifierStorage::new();
+        let app = VerifierApplication::new(params, storage);
+        let challenge = Challenge::builder()
+            .user("test".into())
+            .r1(BigInt::from(11))
+            .r2(BigInt::from(13))
+            .build();
+        assert!(app.create_challenge(challenge).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_verify_challenge() {
+        let mut params = MockParams::new();
+        let material = Material::builder()
+            .p(BigInt::from(1))
+            .q(BigInt::from(1))
+            .g(BigInt::from(1))
+            .h(BigInt::from(1))
+            .build();
+        params
+            .expect_query()
+            .times(1)
+            .returning(move |_| Ok(Some(material.clone())));
+        let mut storage = MockVerifierStorage::new();
+        storage.expect_get_challenge().times(1).returning(|_| {
+            Ok(Some(
+                ChallengeStore::builder()
+                    .challenge(
+                        Challenge::builder()
+                            .r1(BigInt::from(1))
+                            .r2(BigInt::from(1))
+                            .user("test".into())
+                            .build(),
+                    )
+                    .response(
+                        ChallengeResponse::builder()
+                            .auth_id("test".into())
+                            .c(BigInt::from(1))
+                            .build(),
+                    )
+                    .build(),
+            ))
+        });
+        storage.expect_get_user().times(1).returning(|_| {
+            Ok(Some(
+                Register::builder()
+                    .y1(BigInt::from(1))
+                    .y2(BigInt::from(1))
+                    .user("test".into())
+                    .build(),
+            ))
+        });
+        let app = VerifierApplication::new(params, storage);
+        let answer = Answer::builder()
+            .auth_id("test".into())
+            .s(BigInt::from(1))
+            .build();
+        assert!(app.verify_challenge(answer).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_verify_challenge_error() {
+        let mut params = MockParams::new();
+        params
+            .expect_query()
+            .times(1)
+            .returning(|_| Ok(Some(Material::default())));
+        let mut storage = MockVerifierStorage::new();
+        storage.expect_get_challenge().times(1).returning(|_| {
+            Ok(Some(
+                ChallengeStore::builder()
+                    .challenge(
+                        Challenge::builder()
+                            .r1(BigInt::from(18))
+                            .r2(BigInt::from(16))
+                            .user("test".into())
+                            .build(),
+                    )
+                    .response(
+                        ChallengeResponse::builder()
+                            .auth_id("test".into())
+                            .c(BigInt::from(87))
+                            .build(),
+                    )
+                    .build(),
+            ))
+        });
+        storage.expect_get_user().times(1).returning(|_| {
+            Ok(Some(
+                Register::builder()
+                    .y1(BigInt::from(22))
+                    .y2(BigInt::from(54))
+                    .user("test".into())
+                    .build(),
+            ))
+        });
+        let app = VerifierApplication::new(params, storage);
+        let answer = Answer::builder()
+            .auth_id("test".into())
+            .s(BigInt::from(11))
+            .build();
+        let result = app.verify_challenge(answer).await.unwrap();
+        assert_eq!(result, AnswerResult::Failure);
     }
 }

@@ -35,4 +35,7 @@ glob = { workspace = true }
 prost-build = { workspace = true }
 tonic-build = { workspace = true }
 
+[dev-dependencies]
+mockall = "0.12.1"
+
 

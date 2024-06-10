@@ -1,3 +1,21 @@
+//! This module contains the implementation of a Chaum-Pedersen ZK protocol for registration, commitment, challenge, and verification.
+//!
+//! The protocol is defined by a series of steps, each represented by a corresponding struct. The steps include:
+//! - `Register`: Represents the registration step, where a user registers with a material and generates `y1` and `y2` values.
+//! - `Commitment`: Represents the commitment step, where the user generates commitment values `r1` and `r2` based on the material and a random value `k`.
+//! - `Challenge`: Represents the challenge step, where a challenge value `c` is generated.
+//! - `ChallengeResponse`: Represents the challenge response step, where the user calculates a response `s` based on the challenge, material, and private key `x`.
+//! - `VerificationRequest`: Represents the verification request step, where the user sends a verification request with the authentication ID and response `s`.
+//! - `Verification`: Represents the verification step, where the server verifies the response `s` based on the received values and material.
+//! - `VerificationResult`: Represents the result of the verification step, indicating whether the challenge was successfully verified or not.
+//!
+//! The protocol steps are implemented as structs with associated methods for generating the next step based on the current state. The protocol steps also implement the `ProtocolStep` trait, which allows them to be used generically in the `ProtocolState` struct.
+//!
+//! The `ProtocolState` struct represents the current state of the protocol and provides methods for transitioning to the next step. It is parameterized by the current step type and enforces type safety in the protocol transitions.
+//!
+//! The protocol transitions are defined by the `ProtocolTransition` trait, which provides a `change` method to transition to the next step. Each step implements the `ProtocolTransition` trait for the corresponding next step.
+//!
+//! The module also includes unit tests for the protocol transitions, ensuring that the protocol progresses correctly from one step to another.
 use num_bigint::{BigInt, RandBigInt};
 use num_primes::Generator;
 use num_traits::{One, ToPrimitive};
@@ -241,19 +259,27 @@ impl ProtocolState<Verification> {
 }
 
 #[cfg(test)]
+/// Module containing tests for the `cp` module.
 mod tests {
     use super::*;
 
+    /// Test for the challenge transition change.
     #[test]
     fn test_challenge_transition_change() {
+        // Initialize variables
         let x = BigInt::from(11);
         let material = Material::default();
         let register = Register::new(material.clone(), &x);
+
+        // Create commit protocol
         let commit_proto = <Register as Into<ProtocolState<_>>>::into(register.clone()).change();
         let commitment = commit_proto.clone().into_inner();
+
+        // Create challenge protocol
         let challenge_proto = <Material as Into<ProtocolState<_>>>::into(material).change();
         let challenge = challenge_proto.into_inner();
 
+        // Create challenge response
         let challenge_response = ChallengeResponse::builder()
             .challenge(challenge.clone())
             .material(commitment.material)
@@ -261,10 +287,12 @@ mod tests {
             .k(commitment.k)
             .build();
 
+        // Create verification protocol
         let verification_proto =
             <ChallengeResponse as Into<ProtocolState<_>>>::into(challenge_response).change();
         let verification = verification_proto.into_inner();
 
+        // Create verification
         let verification = Verification::builder()
             .material(register.material)
             .y1(register.y1)
@@ -275,9 +303,11 @@ mod tests {
             .s(verification.s)
             .build();
 
+        // Convert verification to protocol state
         let verification_proto = ProtocolState::from(verification);
         let result = verification_proto.change().into_inner();
 
+        // Assert the result
         assert_eq!(result, VerificationResult::ChallengeVerifiedSuccess);
     }
 }

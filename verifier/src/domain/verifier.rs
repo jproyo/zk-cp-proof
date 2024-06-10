@@ -2,6 +2,8 @@ use crate::grpc::zkp_auth::{
     AuthenticationAnswerRequest, AuthenticationAnswerResponse, AuthenticationChallengeRequest,
     AuthenticationChallengeResponse, RegisterRequest,
 };
+#[cfg(test)]
+use mockall::{automock, predicate::*};
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
@@ -103,12 +105,12 @@ impl From<AuthenticationAnswerRequest> for Answer {
     }
 }
 
-#[derive(Debug, Clone, TypedBuilder)]
+#[derive(Debug, Clone, TypedBuilder, Eq, Hash, PartialEq)]
 pub struct Success {
     pub session_id: SessionId,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum AnswerResult {
     Success(Success),
     Failure,
@@ -141,7 +143,7 @@ impl TryFrom<AnswerResult> for AuthenticationAnswerResponse {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct SessionId(pub String);
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq, Deserialize, Serialize)]
@@ -167,10 +169,13 @@ impl Deref for User {
     }
 }
 
+/// Represents the public parameters (material) for a user.
+#[cfg_attr(test, automock)]
 pub trait Params {
     fn query(&self, user: &User) -> anyhow::Result<Option<Material>>;
 }
 
+#[cfg_attr(test, automock)]
 #[async_trait::async_trait]
 /// Trait representing the storage interface for the verifier.
 pub trait VerifierStorage {

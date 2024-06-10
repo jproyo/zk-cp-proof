@@ -1,3 +1,30 @@
+/// This module contains the gRPC server implementation for the verifier service.
+/// It provides the necessary server functionality for user registration, authentication challenge creation,
+/// and authentication verification.
+///
+/// The `GrpcServer` struct is responsible for handling incoming gRPC requests and delegating them to the
+/// appropriate methods in the `VerifierApplication` implementation.
+///
+/// The `new_server` function creates a new gRPC server with the given verifier configuration.
+///
+/// The `Auth` trait defines the gRPC service methods for user registration, authentication challenge creation,
+/// and authentication verification. The `GrpcServer` struct implements this trait to provide the actual
+/// implementation for these methods.
+///
+/// The `run` function starts the gRPC server and serves incoming requests.
+///
+/// Example usage:
+///
+/// ```rust
+/// use crate::conf::VerifierConfig;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let settings: VerifierConfig = conf::init()?;
+///     run(&settings).await?;
+///     Ok(())
+/// }
+/// ```
 use super::zkp_auth::auth_server::{Auth, AuthServer};
 use super::zkp_auth::{
     AuthenticationAnswerRequest, AuthenticationAnswerResponse, AuthenticationChallengeRequest,
