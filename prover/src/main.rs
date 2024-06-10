@@ -28,7 +28,7 @@ pub struct Verifier {
     #[clap(short, long)]
     x: String,
 
-    #[clap(short, long, default_value = "material.json")]
+    #[clap(short, long, default_value = "../protocol/data/client_material.json")]
     material_path: String,
 }
 

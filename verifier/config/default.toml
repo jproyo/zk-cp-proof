@@ -1,4 +1,4 @@
 port = 50000
 response_timeout_in_secs = 60
-material_path = "../protocol/server_material.json"
+material = "../protocol/data/server_material.json"
 

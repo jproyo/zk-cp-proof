@@ -6,7 +6,7 @@ use typed_builder::TypedBuilder;
 pub struct VerifierConfig {
     pub port: u16,
     pub response_timeout_in_secs: u64,
-    pub material_path: String,
+    pub material: String,
 }
 
 #[derive(TypedBuilder)]
@@ -59,6 +59,6 @@ mod tests {
 
         assert_eq!(conf.port, 50_000);
         assert_eq!(conf.response_timeout_in_secs, 60);
-        assert_eq!(conf.material_path, "./config/users.json");
+        assert_eq!(conf.material, "../protocol/data/server_material.json");
     }
 }

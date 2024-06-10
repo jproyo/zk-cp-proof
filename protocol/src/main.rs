@@ -10,10 +10,10 @@ use zk_cp_protocol::protocol::cp::{Material, MaterialSerde};
     about = "Generate random material for testing"
 )]
 pub struct GenMaterial {
-    #[arg(short, long, default_value = "client_material.json")]
+    #[arg(short, long, default_value = "data/client_material.json")]
     client_output_file: String,
 
-    #[arg(short, long, default_value = "server_material.json")]
+    #[arg(short, long, default_value = "data/server_material.json")]
     server_output_file: String,
 
     #[arg(short, long, default_value = "user")]

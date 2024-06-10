@@ -1,0 +1,39 @@
+services:
+  zk-material:
+    build:
+      context: .
+      dockerfile: protocol/Dockerfile
+    volumes:
+      - ./protocol/data/:/app/zk-material/config/
+    command:
+      - "zk-cp-protocol"
+      - "--client-output-file"
+      - "/app/zk-material/config/client_material.json"
+      - "--server-output-file"
+      - "/app/zk-material/config/server_material.json"
+      - "--user"
+      - "docker_user"
+
+  zk-verifier:
+    build:
+      context: .
+      dockerfile: verifier/Dockerfile
+    ports:
+      - "50000:50000"
+    volumes:
+      - ./protocol/data/server_material.json:/app/zk-verifier/config/server_material.json
+    command:
+      - "zk-verifier"
+    depends_on:
+      - zk-material
+    environment:
+      - RUST_LOG=info
+      - ZK_VERIFIER_MATERIAL=/app/zk-verifier/config/server_material.json
+    healthcheck:
+      test: "grpc-health-probe --addr=localhost:50000"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+
