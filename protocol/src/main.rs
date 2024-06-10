@@ -26,6 +26,7 @@ fn init_tracing() {
         .init();
 }
 
+/// Generates random material for testing.
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let conf = GenMaterial::parse();
