@@ -5,7 +5,6 @@ use super::zkp_auth::{
 };
 use crate::application::handler::{VerifierApplication, VerifierService};
 use crate::conf::VerifierConfig;
-use crate::domain::verifier::ChallengeVerificationResult;
 use crate::infrastructure::file_params::FileParams;
 use crate::infrastructure::mem_storage::MemStorage;
 use std::sync::Arc;
@@ -70,7 +69,13 @@ where
                         e.to_string()
                     ))
                 })?;
-        Ok(tonic::Response::new(challenge_started.into()))
+        let resp = challenge_started.try_into().map_err(|e: anyhow::Error| {
+            tonic::Status::internal(format!(
+                "Error converting challenge response: {:?}",
+                e.to_string()
+            ))
+        })?;
+        Ok(tonic::Response::new(resp))
     }
 
     async fn verify_authentication(
@@ -89,16 +94,9 @@ where
                         e.to_string()
                     ))
                 })?;
-        match challenge_verification {
-            ChallengeVerificationResult::ChallengeVerified(session_id) => {
-                Ok(tonic::Response::new(AuthenticationAnswerResponse {
-                    session_id: session_id.0,
-                }))
-            }
-            ChallengeVerificationResult::ChallengeVerificationFailed => Err(
-                tonic::Status::invalid_argument("Challenge verification failed"),
-            ),
-        }
+        let resp = challenge_verification.try_into()?;
+        tracing::info!("Verification Response: {:?}", resp);
+        Ok(tonic::Response::new(resp))
     }
 }
 

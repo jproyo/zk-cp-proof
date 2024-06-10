@@ -1,0 +1,15 @@
+[package]
+name = "zk-cp-protocol"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+num-bigint = { workspace = true, features = ["rand", "serde"] }
+num-traits = { workspace = true }
+num-primes = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+tracing = { workspace = true, features = ["log"] }
+typed-builder = { workspace = true }
+uuid = { workspace = true }
+

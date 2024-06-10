@@ -1,5 +1,7 @@
+use zk_cp_protocol::protocol::cp::Material;
+
 use crate::conf::VerifierConfig;
-use crate::domain::verifier::{Material, Params, User};
+use crate::domain::verifier::{Params, User};
 use std::collections::HashMap;
 
 pub struct FileParams {

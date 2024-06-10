@@ -1,6 +1,6 @@
+use crate::domain::verifier::{ChallengeStore, Register, User, VerifierStorage};
 use dashmap::DashMap;
-
-use crate::domain::verifier::{AuthId, ChallengeStore, Register, User, VerifierStorage};
+use zk_cp_protocol::protocol::cp::AuthId;
 
 /// In-memory storage implementation for the verifier module.
 pub(crate) struct MemStorage {

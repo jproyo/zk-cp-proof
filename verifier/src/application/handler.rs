@@ -1,12 +1,13 @@
 use crate::conf::VerifierConfig;
 use crate::domain::verifier::{
-    Challenge, ChallengeStarted, ChallengeStore, ChallengeTransition, ChallengeVerification,
-    ChallengeVerificationResult, Params, Register, VerifierStorage,
+    Answer, AnswerResult, Challenge, ChallengeResponse, ChallengeStore, Params, Register,
+    VerifierStorage,
 };
 use crate::infrastructure::file_params::FileParams;
 use crate::infrastructure::mem_storage::MemStorage;
 use async_trait::async_trait;
 use typed_builder::TypedBuilder;
+use zk_cp_protocol::protocol::cp::{Material, ProtocolState, ProtocolTransition, Verification};
 
 #[async_trait]
 /// Trait representing a verifier service.
@@ -31,7 +32,7 @@ pub trait VerifierService {
     /// # Returns
     ///
     /// Returns a `Result` containing the started challenge or an error.
-    async fn create_challenge(&self, challenge: Challenge) -> anyhow::Result<ChallengeStarted>;
+    async fn create_challenge(&self, challenge: Challenge) -> anyhow::Result<ChallengeResponse>;
 
     /// Asynchronously verifies a challenge.
     ///
@@ -42,10 +43,7 @@ pub trait VerifierService {
     /// # Returns
     ///
     /// Returns a `Result` containing the verification result or an error.
-    async fn verify_challenge(
-        &self,
-        challenge: ChallengeVerification,
-    ) -> anyhow::Result<ChallengeVerificationResult>;
+    async fn verify_challenge(&self, challenge: Answer) -> anyhow::Result<AnswerResult>;
 }
 
 /// Represents a Verifier Application.
@@ -75,34 +73,36 @@ where
         self.storage.store_user(register).await
     }
 
-    async fn create_challenge(&self, challenge: Challenge) -> anyhow::Result<ChallengeStarted> {
+    async fn create_challenge(&self, challenge: Challenge) -> anyhow::Result<ChallengeResponse> {
         tracing::info!("Creating challenge: {:?}", challenge);
-        let created = <Challenge as Into<ChallengeTransition<Challenge>>>::into(challenge.clone())
+        let material = self
+            .params
+            .query(&challenge.user)?
+            .ok_or_else(|| anyhow::anyhow!("Material not found"))?;
+
+        let created = <Material as Into<ProtocolState<_>>>::into(material)
             .change()
             .into_inner();
-        tracing::info!("Challenge created: {:?} .... Storing", created);
+        let response: ChallengeResponse = created.into();
+        let store = ChallengeStore::builder()
+            .challenge(challenge.clone())
+            .response(response.clone())
+            .build();
+        tracing::info!("Challenge created: {:?} .... Storing", store);
         self.storage
-            .store_challenge(
-                &created.auth_id,
-                ChallengeStore {
-                    challenge,
-                    challenge_started: created.clone(),
-                },
-            )
+            .store_challenge(&response.auth_id, store)
             .await
-            .map(|_| created)
+            .map(|_| response)
     }
 
-    async fn verify_challenge(
-        &self,
-        challenge_ver: ChallengeVerification,
-    ) -> anyhow::Result<ChallengeVerificationResult> {
-        tracing::info!("Verifying challenge: {:?}", challenge_ver);
+    async fn verify_challenge(&self, answer: Answer) -> anyhow::Result<AnswerResult> {
+        tracing::info!("Verifying challenge: {:?}", answer);
         let challenge = self
             .storage
-            .get_challenge(&challenge_ver.auth_id)
+            .get_challenge(&answer.auth_id)
             .await?
             .ok_or_else(|| anyhow::anyhow!("Challenge not found"))?;
+
         let material = self
             .params
             .query(&challenge.challenge.user)?
@@ -112,19 +112,30 @@ where
                     challenge.challenge.user
                 )
             })?;
+
         let user = self
             .storage
             .get_user(&challenge.challenge.user)
             .await?
             .ok_or_else(|| anyhow::anyhow!("User not found"))?;
-        let s = challenge_ver.s.into();
-        let result =
-            <ChallengeVerification as Into<ChallengeTransition<ChallengeVerification>>>::into(
-                challenge_ver,
-            )
-            .change(&user, &challenge, &material, &s)
-            .into_inner();
-        Ok(result)
+
+        let verification: ProtocolState<Verification> = Verification::builder()
+            .material(material)
+            .c(challenge.response.c)
+            .y1(user.y1)
+            .y2(user.y2)
+            .r1(challenge.challenge.r1)
+            .r2(challenge.challenge.r2)
+            .s(answer.s)
+            .build()
+            .into();
+
+        tracing::info!("Verifying challenge: {:?}", verification);
+
+        let result = verification.change().into_inner();
+
+        tracing::info!("Challenge verification Result: {:?}", result);
+        Ok(result.into())
     }
 }
 
