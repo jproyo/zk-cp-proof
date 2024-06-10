@@ -1,0 +1,12 @@
+name: BUILD - ZK CP Workflow
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build-rust:
+    uses: ./.github/workflows/common-pipeline.yml
+    secrets: inherit
