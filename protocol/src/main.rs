@@ -10,8 +10,11 @@ use zk_cp_protocol::protocol::cp::{Material, MaterialSerde};
     about = "Generate random material for testing"
 )]
 pub struct GenMaterial {
-    #[arg(short, long, default_value = "material.json")]
-    output_file: String,
+    #[arg(short, long, default_value = "client_material.json")]
+    client_output_file: String,
+
+    #[arg(short, long, default_value = "server_material.json")]
+    server_output_file: String,
 
     #[arg(short, long, default_value = "user")]
     user: String,
@@ -33,16 +36,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
     init_tracing();
     tracing::info!("Generated random material ... ");
     let material = Material::default();
-    let mut file = tokio::fs::File::create(conf.output_file.clone()).await?;
+    let mut client_file = tokio::fs::File::create(conf.client_output_file.clone()).await?;
+    let mut server_file = tokio::fs::File::create(conf.server_output_file.clone()).await?;
     let material_serde = MaterialSerde::from_material(&material, conf.user.as_str());
-    let s = serde_json::to_string(&material_serde)?;
-    file.write_all(s.as_bytes()).await?;
-    file.write_all(b"\n").await?;
-    file.flush().await?;
+    let client_s = serde_json::to_string(&material_serde)?;
+    client_file.write_all(client_s.as_bytes()).await?;
+    client_file.write_all(b"\n").await?;
+    client_file.flush().await?;
+
+    let server_s = serde_json::to_string(&vec![material_serde])?;
+    server_file.write_all(server_s.as_bytes()).await?;
+    server_file.write_all(b"\n").await?;
+    server_file.flush().await?;
+
     tracing::info!(
-        "Material: {:?} write to file {:?}",
+        "Material: {:?} write to file {:?} and {:?}",
         material,
-        conf.output_file
+        conf.client_output_file,
+        conf.server_output_file
     );
     Ok(())
 }
