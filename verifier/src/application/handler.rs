@@ -177,7 +177,7 @@ mod tests {
         storage.expect_store_user().times(1).returning(|_| Ok(()));
         let app = VerifierApplication::new(params, storage);
         let register = Register::builder()
-            .user("test".into())
+            .user("test")
             .y1(BigInt::from(11))
             .y2(BigInt::from(13))
             .build();
@@ -191,7 +191,7 @@ mod tests {
         let storage = MockVerifierStorage::new();
         let app = VerifierApplication::new(params, storage);
         let register = Register::builder()
-            .user("test".into())
+            .user("test")
             .y1(BigInt::from(11))
             .y2(BigInt::from(13))
             .build();
@@ -212,7 +212,7 @@ mod tests {
             .returning(|_, _| Ok(()));
         let app = VerifierApplication::new(params, storage);
         let challenge = Challenge::builder()
-            .user("test".into())
+            .user("test")
             .r1(BigInt::from(11))
             .r2(BigInt::from(13))
             .build();
@@ -226,7 +226,7 @@ mod tests {
         let storage = MockVerifierStorage::new();
         let app = VerifierApplication::new(params, storage);
         let challenge = Challenge::builder()
-            .user("test".into())
+            .user("test")
             .r1(BigInt::from(11))
             .r2(BigInt::from(13))
             .build();
@@ -254,12 +254,12 @@ mod tests {
                         Challenge::builder()
                             .r1(BigInt::from(1))
                             .r2(BigInt::from(1))
-                            .user("test".into())
+                            .user("test")
                             .build(),
                     )
                     .response(
                         ChallengeResponse::builder()
-                            .auth_id("test".into())
+                            .auth_id("test")
                             .c(BigInt::from(1))
                             .build(),
                     )
@@ -271,15 +271,12 @@ mod tests {
                 Register::builder()
                     .y1(BigInt::from(1))
                     .y2(BigInt::from(1))
-                    .user("test".into())
+                    .user("test")
                     .build(),
             ))
         });
         let app = VerifierApplication::new(params, storage);
-        let answer = Answer::builder()
-            .auth_id("test".into())
-            .s(BigInt::from(1))
-            .build();
+        let answer = Answer::builder().auth_id("test").s(BigInt::from(1)).build();
         assert!(app.verify_challenge(answer).await.is_ok());
     }
 
@@ -298,12 +295,12 @@ mod tests {
                         Challenge::builder()
                             .r1(BigInt::from(18))
                             .r2(BigInt::from(16))
-                            .user("test".into())
+                            .user("test")
                             .build(),
                     )
                     .response(
                         ChallengeResponse::builder()
-                            .auth_id("test".into())
+                            .auth_id("test")
                             .c(BigInt::from(87))
                             .build(),
                     )
@@ -315,13 +312,13 @@ mod tests {
                 Register::builder()
                     .y1(BigInt::from(22))
                     .y2(BigInt::from(54))
-                    .user("test".into())
+                    .user("test")
                     .build(),
             ))
         });
         let app = VerifierApplication::new(params, storage);
         let answer = Answer::builder()
-            .auth_id("test".into())
+            .auth_id("test")
             .s(BigInt::from(11))
             .build();
         let result = app.verify_challenge(answer).await.unwrap();

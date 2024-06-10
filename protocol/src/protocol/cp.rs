@@ -64,9 +64,13 @@ impl Deref for AuthId {
 
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct Material {
+    #[builder(setter(into))]
     pub g: BigInt,
+    #[builder(setter(into))]
     pub h: BigInt,
+    #[builder(setter(into))]
     pub q: BigInt,
+    #[builder(setter(into))]
     pub p: BigInt,
 }
 
@@ -119,7 +123,9 @@ impl MaterialSerde {
 
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct Challenge {
+    #[builder(setter(into))]
     pub auth_id: AuthId,
+    #[builder(setter(into))]
     pub c: BigInt,
 }
 
@@ -127,7 +133,9 @@ pub struct Challenge {
 pub struct ChallengeResponse {
     pub challenge: Challenge,
     pub material: Material,
+    #[builder(setter(into))]
     pub x: BigInt,
+    #[builder(setter(into))]
     pub k: BigInt,
 }
 
@@ -154,11 +162,17 @@ pub struct Commitment {
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct Verification {
     pub material: Material,
+    #[builder(setter(into))]
     pub y1: BigInt,
+    #[builder(setter(into))]
     pub y2: BigInt,
+    #[builder(setter(into))]
     pub r1: BigInt,
+    #[builder(setter(into))]
     pub r2: BigInt,
+    #[builder(setter(into))]
     pub c: BigInt,
+    #[builder(setter(into))]
     pub s: BigInt,
 }
 

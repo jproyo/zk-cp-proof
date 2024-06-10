@@ -15,8 +15,11 @@ use zk_cp_protocol::protocol::cp::{AuthId, Material};
 
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct Register {
+    #[builder(setter(into))]
     pub user: User,
+    #[builder(setter(into))]
     pub y1: BigInt,
+    #[builder(setter(into))]
     pub y2: BigInt,
 }
 
@@ -32,8 +35,11 @@ impl From<RegisterRequest> for Register {
 
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct Challenge {
+    #[builder(setter(into))]
     pub user: User,
+    #[builder(setter(into))]
     pub r1: BigInt,
+    #[builder(setter(into))]
     pub r2: BigInt,
 }
 
@@ -49,7 +55,9 @@ impl From<AuthenticationChallengeRequest> for Challenge {
 
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct ChallengeResponse {
+    #[builder(setter(into))]
     pub auth_id: AuthId,
+    #[builder(setter(into))]
     pub c: BigInt,
 }
 
@@ -92,7 +100,9 @@ pub struct ChallengeStore {
 
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct Answer {
+    #[builder(setter(into))]
     pub auth_id: AuthId,
+    #[builder(setter(into))]
     pub s: BigInt,
 }
 
