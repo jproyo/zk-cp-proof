@@ -2252,14 +2252,20 @@ dependencies = [
 name = "zk-prover"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "clap",
  "glob",
+ "num-bigint 0.4.5",
+ "num-traits",
  "prost",
  "prost-build",
  "prost-types",
  "rand 0.8.5",
  "serde_json",
+ "tokio",
  "tonic",
  "tonic-build",
+ "zk-cp-protocol",
 ]
 
 [[package]]
