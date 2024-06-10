@@ -5,7 +5,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build_server(false)
         .build_client(true)
         .out_dir("src/grpc")
-        .include_file("mod.rs")
         .compile_with_config(config, &["../protos/zk_auth.proto"], &["../protos"])?;
 
     Ok(())

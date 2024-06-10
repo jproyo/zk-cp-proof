@@ -35,7 +35,7 @@ impl Params for FileParams {
     /// # Returns
     ///
     /// A `Result` containing an `Option` with the material if it exists for the user, or `None` if it doesn't exist.
-    pub fn query(&self, user: &User) -> anyhow::Result<Option<Material>> {
+    fn query(&self, user: &User) -> anyhow::Result<Option<Material>> {
         Ok(self.materials.get(user).cloned())
     }
 }
