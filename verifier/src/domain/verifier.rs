@@ -2,6 +2,8 @@ use crate::grpc::zkp_auth::{
     AuthenticationAnswerRequest, AuthenticationChallengeRequest, AuthenticationChallengeResponse,
     RegisterRequest,
 };
+use num_bigint::BigInt;
+use num_traits::{Euclid, One};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::ops::Deref;
@@ -181,7 +183,7 @@ impl ChallengeTransition<Challenge> {
     /// Returns a new `ChallengeTransition` with the state set to `ChallengeStarted`.
     pub fn change(self) -> ChallengeTransition<ChallengeStarted> {
         let mut rng = rand::thread_rng();
-        let random_c: i32 = rng.gen();
+        let random_c: i32 = rng.gen_range(0..=1000);
         ChallengeTransition {
             state: ChallengeStarted {
                 auth_id: AuthId(Uuid::new_v4().to_string()),
@@ -212,20 +214,20 @@ impl ChallengeTransition<ChallengeVerification> {
         register: &Register,
         challenge: &ChallengeStore,
         material: &Material,
-        s: i32,
+        s: &BigInt,
     ) -> ChallengeTransition<ChallengeVerificationResult> {
-        let c = challenge.challenge_started.c;
+        let c: BigInt = challenge.challenge_started.c.into();
         let challenge = &challenge.challenge;
-        let y1 = &register.y1;
-        let y2 = &register.y2;
-        let r1 = &challenge.r1;
-        let r2 = &challenge.r2;
-        let g = &material.g;
-        let h = &material.h;
-        let p = &material.p;
-        let r1_prime = (g.pow(s as u32) * y1.pow(c as u32)) % p;
-        let r2_prime = (h.pow(s as u32) * y2.pow(c as u32)) % p;
-        if r1 == &r1_prime && r2 == &r2_prime {
+        let y1: BigInt = register.y1.into();
+        let y2: BigInt = register.y2.into();
+        let r1: BigInt = challenge.r1.into();
+        let r2: BigInt = challenge.r2.into();
+        let g: BigInt = material.g.into();
+        let h: BigInt = material.h.into();
+        let p: BigInt = material.p.into();
+        let r1_prime = (g.modpow(s, &p) * y1.modpow(&c, &p)).modpow(&BigInt::one(), &p);
+        let r2_prime = (h.modpow(s, &p) * y2.modpow(&c, &p)).modpow(&BigInt::one(), &p);
+        if r1 == r1_prime && r2 == r2_prime {
             tracing::info!("Challenge verified successfully");
             ChallengeTransition {
                 state: ChallengeVerificationResult::ChallengeVerified(SessionId(
@@ -233,7 +235,7 @@ impl ChallengeTransition<ChallengeVerification> {
                 )),
             }
         } else {
-            tracing::info!(
+            println!(
                 "Challenge verification failed due to mismatch - expected: {:?}, actual: {:?}",
                 (r1_prime, r2_prime),
                 (r1, r2)
@@ -307,47 +309,61 @@ pub trait VerifierStorage {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use num_bigint::RandBigInt;
+    use num_primes::Generator;
+    use num_traits::{One, ToPrimitive};
 
-    #[tokio::test]
-    async fn test_challenge_transition_change() {
-        let q = 7;
-        let p = 11;
-        let g: i64 = 4;
-        let h: i64 = 5;
-        let x = 3;
-        let c = 2;
-        let y1 = g.pow(x as u32) % p;
-        let y2 = h.pow(x as u32) % p;
+    fn common_params() -> (Register, ChallengeStarted, ChallengeStore, Material, BigInt) {
+        let p_prime = Generator::safe_prime(16);
+        let p: BigInt = p_prime.to_u64().unwrap().into();
+        let q: BigInt = (p.clone() - BigInt::one()) / 2;
+        let g: BigInt = 7.into();
+        let h: BigInt = g.modpow(&BigInt::from(11), &p);
+        let x: BigInt = 3.into();
+        let c = rand::thread_rng().gen_bigint_range(&2.into(), &(&q - 1));
+        let y1 = g.modpow(&x, &p);
+        let y2 = h.modpow(&x, &p);
         let register = Register::builder()
             .user(User::from("test_user"))
-            .y1(y1)
-            .y2(y2)
+            .y1(y1.to_i64().unwrap())
+            .y2(y2.to_i64().unwrap())
             .build();
 
-        let rand_k = rand::thread_rng().gen_range(0..=p) as i32;
+        let k = rand::thread_rng().gen_bigint_range(&2.into(), &(&p - 2));
 
-        let r1 = g.pow(rand_k as u32) % p;
-        let r2 = h.pow(rand_k as u32) % p;
+        let r1 = g.modpow(&k, &p);
+        let r2 = h.modpow(&k, &p);
 
         let challenge = Challenge::builder()
             .user(User::from("test_user"))
-            .r1(r1)
-            .r2(r2)
+            .r1(r1.to_i64().unwrap())
+            .r2(r2.to_i64().unwrap())
             .build();
 
         let challenge_started = ChallengeStarted::builder()
             .auth_id(AuthId::from("test_auth_id"))
-            .c(c)
+            .c(c.to_i32().unwrap())
             .build();
 
-        let s = (rand_k - c * x) % q;
+        let cx = c * &x;
+        let s = if k > cx {
+            (k - cx).modpow(&BigInt::one(), &q)
+        } else {
+            &q - (cx - k).modpow(&BigInt::one(), &q)
+        };
 
+        //let s = (&k - c * &x).rem_euclid(&q);
         let challenge_store = ChallengeStore::builder()
             .challenge(challenge.clone())
             .challenge_started(challenge_started.clone())
             .build();
 
-        let material = Material::builder().g(g).h(h).p(p).q(q as i64).build();
+        let material = Material::builder()
+            .g(g.to_i64().unwrap())
+            .h(h.to_i64().unwrap())
+            .p(p.to_i64().unwrap())
+            .q(q.to_i64().unwrap())
+            .build();
 
         let transition = ChallengeTransition::<Challenge>::from(challenge)
             .change()
@@ -356,13 +372,19 @@ mod tests {
         assert_ne!(transition.auth_id.to_string(), "");
         assert_ne!(transition.c, challenge_started.c);
 
+        (register, challenge_started, challenge_store, material, s)
+    }
+
+    #[tokio::test]
+    async fn test_challenge_transition_change() {
+        let (register, challenge_started, challenge_store, material, s) = common_params();
         let challenge_verification = ChallengeVerification::builder()
             .auth_id(challenge_started.auth_id)
-            .s(s)
+            .s(s.to_i32().unwrap())
             .build();
 
         let transition = ChallengeTransition::<ChallengeVerification>::from(challenge_verification)
-            .change(&register, &challenge_store, &material, s)
+            .change(&register, &challenge_store, &material, &s)
             .into_inner();
 
         match transition {
@@ -377,59 +399,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_challenge_transition_change_failed() {
-        let q = 7;
-        let p = 11;
-        let g: i64 = 4;
-        let h: i64 = 5;
-        let x = 3;
-        let c = 2;
-        let y1 = g.pow(x as u32) % p;
-        let y2 = h.pow(x as u32) % p;
-        let register = Register::builder()
-            .user(User::from("test_user"))
-            .y1(y1)
-            .y2(y2)
-            .build();
-
-        let rand_k = rand::thread_rng().gen_range(0..=p) as i32;
-
-        let r1 = g.pow(rand_k as u32) % p;
-        let r2 = h.pow(rand_k as u32) % p;
-
-        let challenge = Challenge::builder()
-            .user(User::from("test_user"))
-            .r1(r1)
-            .r2(r2)
-            .build();
-
-        let challenge_started = ChallengeStarted::builder()
-            .auth_id(AuthId::from("test_auth_id"))
-            .c(c)
-            .build();
-
-        let s = (rand_k - c * x) % q;
-
-        let challenge_store = ChallengeStore::builder()
-            .challenge(challenge.clone())
-            .challenge_started(challenge_started.clone())
-            .build();
-
-        let material = Material::builder().g(g).h(h).p(p).q((q - 3) as i64).build();
-
-        let transition = ChallengeTransition::<Challenge>::from(challenge)
-            .change()
-            .into_inner();
-
-        assert_ne!(transition.auth_id.to_string(), "");
-        assert_ne!(transition.c, challenge_started.c);
-
+        let (register, challenge_started, challenge_store, material, s) = common_params();
         let challenge_verification = ChallengeVerification::builder()
             .auth_id(challenge_started.auth_id)
-            .s(s)
+            .s(s.to_i32().unwrap())
             .build();
 
         let transition = ChallengeTransition::<ChallengeVerification>::from(challenge_verification)
-            .change(&register, &challenge_store, &material, s + 1)
+            .change(&register, &challenge_store, &material, &(s + 1))
             .into_inner();
 
         match transition {

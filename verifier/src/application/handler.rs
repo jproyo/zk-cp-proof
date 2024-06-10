@@ -117,12 +117,12 @@ where
             .get_user(&challenge.challenge.user)
             .await?
             .ok_or_else(|| anyhow::anyhow!("User not found"))?;
-        let s = challenge_ver.s;
+        let s = challenge_ver.s.into();
         let result =
             <ChallengeVerification as Into<ChallengeTransition<ChallengeVerification>>>::into(
                 challenge_ver,
             )
-            .change(&user, &challenge, &material, s)
+            .change(&user, &challenge, &material, &s)
             .into_inner();
         Ok(result)
     }
